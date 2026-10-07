@@ -1,9 +1,23 @@
 <script setup>
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useCartStore } from '../stores/cart';
 import { useAddressStore } from '../stores/address';
+
+const props = defineProps({
+  isMinimized: {
+    type: Boolean,
+    default: false,
+  },
+});
+
+const internalMinimized = ref(false);
+const isCollapsed = computed(() => props.isMinimized || internalMinimized.value);
+
+function toggleCollapse() {
+  internalMinimized.value = !internalMinimized.value;
+}
 
 const emit = defineEmits(['open-address-modal']);
 
@@ -42,15 +56,22 @@ function switchStakeholderRole(role, targetRoute) {
 </script>
 
 <template>
-  <aside class="sidebar">
+  <aside class="sidebar" :class="{ 'is-minimized': isCollapsed }">
     <!-- 1. Brand & Branch Header -->
     <div class="sidebar-header">
       <div class="brand">
-        <div class="brand-badge">🛒</div>
-        <div>
+        <div class="brand-badge" @click="toggleCollapse" :title="isCollapsed ? 'Click to expand sidebar' : ''">🛒</div>
+        <div v-if="!isCollapsed">
           <span class="brand-title">Fresh<span class="accent-text">Supermarket</span></span>
           <span class="brand-sub">Grocery Delivery OS</span>
         </div>
+        <button
+          class="sidebar-toggle-btn"
+          @click="toggleCollapse"
+          :title="isCollapsed ? 'Expand sidebar' : 'Minimize sidebar'"
+        >
+          {{ isCollapsed ? '❯' : '❮' }}
+        </button>
       </div>
 
       <div class="branch-pill">
@@ -214,6 +235,61 @@ function switchStakeholderRole(role, targetRoute) {
   position: sticky;
   top: 0;
   z-index: 50;
+  transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar.is-minimized {
+  width: 64px;
+  min-width: 64px;
+}
+
+.sidebar.is-minimized .branch-pill,
+.sidebar.is-minimized .role-switcher-container,
+.sidebar.is-minimized .nav-group-title,
+.sidebar.is-minimized .user-details,
+.sidebar.is-minimized .address-nav-text,
+.sidebar.is-minimized .edit-pin,
+.sidebar.is-minimized .nav-item span:not(.nav-icon) {
+  display: none !important;
+}
+
+.sidebar.is-minimized .nav-item {
+  justify-content: center;
+  padding: 0.65rem 0;
+}
+
+.sidebar.is-minimized .sidebar-header {
+  padding: 1rem 0.5rem;
+}
+
+.sidebar.is-minimized .brand {
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.sidebar-toggle-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius-sm);
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 0.75rem;
+  margin-left: auto;
+  transition: var(--transition);
+}
+
+.sidebar-toggle-btn:hover {
+  background: var(--primary);
+}
+
+.sidebar.is-minimized .sidebar-toggle-btn {
+  margin: 0;
 }
 
 .sidebar-header {

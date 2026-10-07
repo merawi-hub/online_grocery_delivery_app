@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CatalogController;
+use App\Http\Controllers\Api\ManagerController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\TrackingController;
 use Illuminate\Support\Facades\Route;
@@ -22,6 +23,24 @@ Route::prefix('catalog')->group(function () {
     Route::get('/branches', [CatalogController::class, 'getBranches']);
     Route::get('/categories', [CatalogController::class, 'getCategories']);
     Route::get('/products', [CatalogController::class, 'getProducts']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Store Manager Endpoints (/admin123 backend)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('manager')->group(function () {
+    Route::post('/register', [ManagerController::class, 'register']);
+    Route::get('/stats', [ManagerController::class, 'getDashboardStats']);
+    Route::get('/inventory', [ManagerController::class, 'getInventory']);
+    Route::post('/products', [ManagerController::class, 'storeProduct']);
+    Route::put('/products/{id}', [ManagerController::class, 'updateProduct']);
+    Route::delete('/products/{id}', [ManagerController::class, 'deleteProduct']);
+    Route::put('/inventory/{id}', [ManagerController::class, 'updateInventoryItem']);
+    Route::get('/orders', [ManagerController::class, 'getOrders']);
+    Route::patch('/orders/{id}/status', [ManagerController::class, 'updateOrderStatus']);
+    Route::put('/branch', [ManagerController::class, 'updateBranchSettings']);
 });
 
 /*
