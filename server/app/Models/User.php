@@ -16,12 +16,19 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name',
+        'first_name',
+        'last_name',
         'email',
         'phone_number',
         'phone_verified_at',
         'role',
+        'branch_id',
+        'vehicle_type',
+        'approval_status',
         'is_active',
         'avatar_url',
+        'assigned_by',
+        'assigned_at',
         'password',
     ];
 
@@ -35,6 +42,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'phone_verified_at' => 'datetime',
+            'assigned_at' => 'datetime',
             'is_active' => 'boolean',
             'password' => 'hashed',
         ];
@@ -58,6 +66,21 @@ class User extends Authenticatable
     public function driverTrips(): HasMany
     {
         return $this->hasMany(DriverTrip::class, 'driver_id');
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
+    public function assignedBy()
+    {
+        return $this->belongsTo(User::class, 'assigned_by');
+    }
+
+    public function assignedStaff(): HasMany
+    {
+        return $this->hasMany(User::class, 'assigned_by');
     }
 
     public function isCustomer(): bool

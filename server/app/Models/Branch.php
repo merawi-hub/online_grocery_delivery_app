@@ -20,9 +20,25 @@ class Branch extends Model
         'longitude',
         'delivery_radius_km',
         'contact_phone',
+        'email',
+        'website',
         'is_open',
         'opening_time',
         'closing_time',
+        'operating_days',
+        'approval_status',
+        'rejection_reason',
+        'rating',
+        'total_reviews',
+        'total_orders',
+        'long_description',
+        'cover_image_url',
+        'gallery_images',
+        'minimum_order_amount',
+        'average_preparation_minutes',
+        'commission_rate',
+        'approved_at',
+        'approved_by',
     ];
 
     protected function casts(): array
@@ -31,7 +47,16 @@ class Branch extends Model
             'latitude' => 'float',
             'longitude' => 'float',
             'delivery_radius_km' => 'float',
+            'rating' => 'decimal:2',
+            'total_reviews' => 'integer',
+            'total_orders' => 'integer',
+            'minimum_order_amount' => 'decimal:2',
+            'average_preparation_minutes' => 'integer',
+            'commission_rate' => 'decimal:2',
             'is_open' => 'boolean',
+            'operating_days' => 'array',
+            'gallery_images' => 'array',
+            'approved_at' => 'datetime',
         ];
     }
 
@@ -54,7 +79,70 @@ class Branch extends Model
 
     public function orders(): HasMany
     {
-        return $this->hasMany(Order::class);
+        return $this->hasMany(StoreOrder::class, 'store_id');
+    }
+
+    public function storeOrders(): HasMany
+    {
+        return $this->hasMany(StoreOrder::class, 'store_id');
+    }
+
+    /**
+     * Get store members (managers, staff)
+     */
+    public function members(): HasMany
+    {
+        return $this->hasMany(StoreMember::class, 'store_id');
+    }
+
+    /**
+     * Get active managers
+     */
+    public function activeManagers()
+    {
+        return $this->members()
+            ->where('is_active', true)
+            ->where('role', 'manager')
+            ->with('user');
+    }
+
+    /**
+     * Get delivery zones
+     */
+    public function deliveryZones(): HasMany
+    {
+        return $this->hasMany(DeliveryZone::class, 'store_id');
+    }
+
+    /**
+     * Get active delivery zones
+     */
+    public function activeDeliveryZones()
+    {
+        return $this->deliveryZones()->where('is_active', true);
+    }
+
+    /**
+     * Get admin who approved this store
+     */
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function staff(): HasMany
+    {
+        return $this->hasMany(User::class);
+    }
+
+    public function managers(): HasMany
+    {
+        return $this->hasMany(User::class)->where('role', 'store_manager');
+    }
+
+    public function deliverers(): HasMany
+    {
+        return $this->hasMany(User::class)->where('role', 'driver');
     }
 
     /**

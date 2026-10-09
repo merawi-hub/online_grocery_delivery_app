@@ -91,9 +91,16 @@ function quickFill(phone) {
 
       <!-- Bottom Nav -->
       <div class="auth-footer">
-        <span>Need a new manager profile?</span>
-        <router-link to="/admin123/signup" class="footer-link">
-          Register Manager
+        <span>Managed by General Operations Hub:</span>
+        <router-link to="/general-manager" class="footer-link">
+          👑 4th Manager Console
+        </router-link>
+      </div>
+
+      <div class="auth-footer sub-footer">
+        <span>Switching portal?</span>
+        <router-link to="/login" class="footer-link">
+          All Stakeholders Login →
         </router-link>
       </div>
     </div>

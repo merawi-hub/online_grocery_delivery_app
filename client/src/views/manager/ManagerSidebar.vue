@@ -20,7 +20,7 @@ const isAccountModalOpen = ref(false);
 
 function handleManagerLogout() {
   authStore.logout();
-  router.push('/admin123/login');
+  router.push('/login');
 }
 
 async function switchToAccount(phone, pass) {
@@ -129,6 +129,16 @@ async function switchToAccount(phone, pass) {
         <span class="nav-icon">⚙️</span>
         <span v-if="!isMinimized" class="nav-label">Store Settings</span>
         <span v-if="isMinimized" class="nav-tooltip">Store Settings</span>
+      </router-link>
+
+      <router-link
+        to="/general-manager"
+        class="nav-link"
+        :class="{ active: route.path === '/general-manager' }"
+      >
+        <span class="nav-icon">👑</span>
+        <span v-if="!isMinimized" class="nav-label">4th Manager Console</span>
+        <span v-if="isMinimized" class="nav-tooltip">General Operations Manager</span>
       </router-link>
     </nav>
 

@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\AddressController;
+use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CatalogController;
+use App\Http\Controllers\Api\DelivererController;
 use App\Http\Controllers\Api\ManagerController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\TrackingController;
@@ -27,7 +29,34 @@ Route::prefix('catalog')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Store Manager Endpoints (/admin123 backend)
+| General Operations Manager Endpoints (3rd Stakeholder: Admin)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('admin')->group(function () {
+    Route::get('/overview', [AdminController::class, 'getOverview']);
+    Route::get('/branches', [AdminController::class, 'getBranches']);
+    
+    // Stock Managers
+    Route::get('/stock-managers', [AdminController::class, 'getStockManagers']);
+    Route::post('/stock-managers', [AdminController::class, 'storeStockManager']);
+    Route::patch('/stock-managers/{id}/branch', [AdminController::class, 'switchStockManagerBranch']);
+    Route::patch('/stock-managers/{id}/approval', [AdminController::class, 'updateStockManagerApproval']);
+    Route::delete('/stock-managers/{id}', [AdminController::class, 'deleteStockManager']);
+
+    // Deliverers / Couriers
+    Route::get('/deliverers', [AdminController::class, 'getDeliverers']);
+    Route::post('/deliverers', [AdminController::class, 'storeDeliverer']);
+    Route::patch('/deliverers/{id}/branch', [AdminController::class, 'assignDelivererBranch']);
+    Route::patch('/deliverers/{id}/approval', [AdminController::class, 'updateDelivererApproval']);
+    Route::delete('/deliverers/{id}', [AdminController::class, 'deleteDeliverer']);
+
+    // Order Dispatch & Deliverer Assignment
+    Route::post('/orders/{id}/assign-deliverer', [AdminController::class, 'assignDelivererToOrder']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Supermarket Stock Manager Endpoints (/admin123 backend)
 |--------------------------------------------------------------------------
 */
 Route::prefix('manager')->group(function () {
@@ -41,6 +70,30 @@ Route::prefix('manager')->group(function () {
     Route::get('/orders', [ManagerController::class, 'getOrders']);
     Route::patch('/orders/{id}/status', [ManagerController::class, 'updateOrderStatus']);
     Route::put('/branch', [ManagerController::class, 'updateBranchSettings']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Deliverer / Courier Fleet Endpoints (4th Stakeholder: Deliverer)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('driver')->group(function () {
+    Route::get('/orders/available', [DelivererController::class, 'getAvailableOrders']);
+    Route::get('/orders/active', [DelivererController::class, 'getActiveDelivery']);
+    Route::post('/orders/{id}/pickup', [DelivererController::class, 'pickupOrder']);
+    Route::post('/orders/{id}/deliver', [DelivererController::class, 'confirmDelivery']);
+    Route::get('/history', [DelivererController::class, 'getHistory']);
+    Route::post('/trips/{tripId}/location', [TrackingController::class, 'updateDriverLocation']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Orders & Tracking Endpoints (Customer & Deliverer Handover)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('orders')->group(function () {
+    Route::get('/{id}/tracking', [TrackingController::class, 'trackOrder']);
+    Route::post('/{id}/confirm-received', [OrderController::class, 'confirmReceived']);
 });
 
 /*
@@ -69,11 +122,5 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [OrderController::class, 'index']);
         Route::post('/', [OrderController::class, 'store']);
         Route::get('/{id}', [OrderController::class, 'show']);
-        Route::get('/{id}/tracking', [TrackingController::class, 'trackOrder']);
-    });
-
-    // Driver Dispatch & Live Telemetry
-    Route::prefix('driver')->group(function () {
-        Route::post('/trips/{tripId}/location', [TrackingController::class, 'updateDriverLocation']);
     });
 });

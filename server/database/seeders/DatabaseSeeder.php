@@ -25,68 +25,140 @@ class DatabaseSeeder extends Seeder
     {
         $defaultPassword = Hash::make('password123');
 
+        $seedUser = function ($criteria, $data) {
+            $query = User::query();
+            if (!empty($criteria['email'])) {
+                $query->where('email', $criteria['email']);
+            }
+            if (!empty($criteria['phone_number'])) {
+                $query->orWhere('phone_number', $criteria['phone_number']);
+            }
+            if (!empty($criteria['name'])) {
+                $query->orWhere('name', $criteria['name']);
+            }
+            $user = $query->first();
+            if ($user) {
+                $user->update($data);
+                return $user;
+            }
+            return User::create(array_merge($criteria, $data));
+        };
+
         // 1. Create Core Stakeholder Users
-        $admin = User::firstOrCreate(
-            ['phone_number' => '+251911000001'],
+        $admin = $seedUser(
+            ['name' => 'admin', 'email' => 'admin@grocery.test'],
             [
-                'name' => 'Abebe Admin',
+                'first_name' => 'General',
+                'last_name' => 'Manager',
                 'email' => 'admin@grocery.test',
-                'password' => $defaultPassword,
+                'phone_number' => null,
+                'password' => Hash::make('admin123'),
                 'role' => 'admin',
+                'approval_status' => 'approved',
                 'phone_verified_at' => now(),
                 'is_active' => true,
             ]
         );
 
-        $manager = User::firstOrCreate(
-            ['phone_number' => '+251911000002'],
+        $customerUser1 = $seedUser(
+            ['phone_number' => '0969644384'],
+            [
+                'name' => 'User1',
+                'first_name' => 'User',
+                'last_name' => '1',
+                'email' => 'user1@grocery.test',
+                'password' => Hash::make('password123'),
+                'role' => 'customer',
+                'approval_status' => 'approved',
+                'phone_verified_at' => now(),
+                'is_active' => true,
+            ]
+        );
+        $customer = $customerUser1;
+
+        $manager = $seedUser(
+            ['email' => 'manager@grocery.test', 'phone_number' => '0911000002'],
             [
                 'name' => 'Sara Manager',
+                'first_name' => 'Sara',
+                'last_name' => 'Manager',
                 'email' => 'manager@grocery.test',
+                'phone_number' => '0911000002',
                 'password' => $defaultPassword,
                 'role' => 'store_manager',
+                'approval_status' => 'approved',
                 'phone_verified_at' => now(),
                 'is_active' => true,
             ]
         );
 
-        $picker = User::firstOrCreate(
-            ['phone_number' => '+251911000003'],
+        $managerPending = $seedUser(
+            ['email' => 'kidus.stock@grocery.test', 'phone_number' => '0922334455'],
             [
-                'name' => 'Dawit Picker',
-                'email' => 'picker@grocery.test',
+                'name' => 'Kidus Alemu',
+                'first_name' => 'Kidus',
+                'last_name' => 'Alemu',
+                'email' => 'kidus.stock@grocery.test',
+                'phone_number' => '0922334455',
                 'password' => $defaultPassword,
-                'role' => 'picker',
+                'role' => 'store_manager',
+                'approval_status' => 'pending',
                 'phone_verified_at' => now(),
                 'is_active' => true,
             ]
         );
 
-        $driver = User::firstOrCreate(
-            ['phone_number' => '+251911000004'],
+        $driver = $seedUser(
+            ['email' => 'driver@grocery.test', 'phone_number' => '0911000004'],
             [
                 'name' => 'Yonas Driver',
+                'first_name' => 'Yonas',
+                'last_name' => 'Driver',
                 'email' => 'driver@grocery.test',
+                'phone_number' => '0911000004',
                 'password' => $defaultPassword,
                 'role' => 'driver',
+                'approval_status' => 'approved',
+                'vehicle_type' => 'Motorbike',
                 'phone_verified_at' => now(),
                 'is_active' => true,
             ]
         );
 
-        $customer = User::firstOrCreate(
-            ['phone_number' => '+251911000005'],
+        $driverPending = $seedUser(
+            ['email' => 'tariku.driver@grocery.test', 'phone_number' => '0933445566'],
             [
-                'name' => 'Marta Shopper',
-                'email' => 'customer@grocery.test',
+                'name' => 'Tariku Bekele',
+                'first_name' => 'Tariku',
+                'last_name' => 'Bekele',
+                'email' => 'tariku.driver@grocery.test',
+                'phone_number' => '0933445566',
                 'password' => $defaultPassword,
-                'role' => 'customer',
+                'role' => 'driver',
+                'approval_status' => 'pending',
+                'vehicle_type' => 'Bicycle',
                 'phone_verified_at' => now(),
                 'is_active' => true,
             ]
         );
 
-        // 2. Create Supermarket & Physical Branch (Addis Ababa reference coordinates)
+        $picker = $seedUser(
+            ['email' => 'picker@grocery.test', 'phone_number' => '0911000003'],
+            [
+                'name' => 'Dawit Picker',
+                'first_name' => 'Dawit',
+                'last_name' => 'Picker',
+                'email' => 'picker@grocery.test',
+                'phone_number' => '0911000003',
+                'password' => $defaultPassword,
+                'role' => 'picker',
+                'approval_status' => 'approved',
+                'phone_verified_at' => now(),
+                'is_active' => true,
+            ]
+        );
+
+        // 2. Create Supermarket & Physical Branches (Addis Ababa reference coordinates)
         $supermarket = Supermarket::firstOrCreate(
             ['slug' => 'freshmart-supermarket'],
             [
@@ -111,6 +183,42 @@ class DatabaseSeeder extends Seeder
                 'closing_time' => '22:30:00',
             ]
         );
+
+        $branch2 = Branch::firstOrCreate(
+            ['name' => 'Kazanchis Express Supermarket'],
+            [
+                'supermarket_id' => $supermarket->id,
+                'address' => 'Kirkos Sub-City, Menelik II Avenue, Addis Ababa',
+                'latitude' => 9.01650000,
+                'longitude' => 38.76580000,
+                'delivery_radius_km' => 8.00,
+                'contact_phone' => '+251115123456',
+                'is_open' => true,
+                'opening_time' => '07:00:00',
+                'closing_time' => '23:00:00',
+            ]
+        );
+
+        $branch3 = Branch::firstOrCreate(
+            ['name' => 'Sarbet Premium Supermarket'],
+            [
+                'supermarket_id' => $supermarket->id,
+                'address' => 'Nifas Silk Sub-City, South Africa St, Addis Ababa',
+                'latitude' => 8.99500000,
+                'longitude' => 38.73800000,
+                'delivery_radius_km' => 9.00,
+                'contact_phone' => '+251113123456',
+                'is_open' => true,
+                'opening_time' => '08:00:00',
+                'closing_time' => '22:00:00',
+            ]
+        );
+
+        // Assign initial staff to supermarket branches
+        $manager->update(['branch_id' => $branch->id]);
+        $managerPending->update(['branch_id' => $branch2->id]);
+        $driver->update(['branch_id' => $branch->id]);
+        $driverPending->update(['branch_id' => $branch2->id]);
 
         // 3. Create Granular Precision Address for Customer
         $customerAddress = Address::firstOrCreate(
@@ -293,24 +401,28 @@ class DatabaseSeeder extends Seeder
                 ]
             );
 
-            // Link to branch inventory
-            BranchProduct::updateOrCreate(
-                ['branch_id' => $branch->id, 'product_id' => $product->id],
-                [
-                    'price' => $p['price'],
-                    'discount_price' => null,
-                    'stock_quantity' => $p['stock'],
-                    'is_in_stock' => true,
-                ]
-            );
+            // Link to branch inventory (all branches)
+            foreach ([$branch, $branch2, $branch3] as $b) {
+                BranchProduct::updateOrCreate(
+                    ['branch_id' => $b->id, 'product_id' => $product->id],
+                    [
+                        'price' => $p['price'],
+                        'discount_price' => null,
+                        'stock_quantity' => $p['stock'],
+                        'is_in_stock' => true,
+                    ]
+                );
+            }
         }
 
-        // 6. Create a Sample Active Order demonstrating Live Tracking & Fulfillment
+        // 6. Create Sample Orders across stages:
+        // Order 1: Out for Delivery (Live Tracking Demo)
         $banana = Product::where('sku', 'FRT-BAN-001')->first();
         $milk = Product::where('sku', 'DAI-MLK-001')->first();
         $coffee = Product::where('sku', 'PAN-COF-002')->first();
+        $apple = Product::where('sku', 'FRT-APP-002')->first();
 
-        $subtotal = (120.00 * 1.5) + (85.00 * 2) + 380.00; // 180 + 170 + 380 = 730
+        $subtotal = (120.00 * 1.5) + (85.00 * 2) + 380.00;
         $deliveryFee = 50.00;
         $total = $subtotal + $deliveryFee;
 
@@ -335,6 +447,7 @@ class DatabaseSeeder extends Seeder
                     'nearby_landmark' => $customerAddress->nearby_landmark,
                     'delivery_instructions' => $customerAddress->delivery_instructions,
                     'customer_phone' => $customer->phone_number,
+                    'customer_name' => $customer->name,
                 ],
                 'status' => 'out_for_delivery',
                 'delivery_type' => 'express_immediate',
@@ -344,18 +457,17 @@ class DatabaseSeeder extends Seeder
                 'final_total' => $total,
                 'payment_method' => 'cash_on_delivery',
                 'payment_status' => 'pending',
-                'delivery_otp' => '482910', // Yango verification OTP
+                'delivery_otp' => '482910',
                 'picker_id' => $picker->id,
                 'special_notes' => 'Please deliver as quickly as possible. Thanks!',
             ]
         );
 
-        // Order Items
         OrderItem::firstOrCreate(
             ['order_id' => $order->id, 'product_id' => $banana->id],
             [
-                'requested_quantity' => 1.50, // 1.5 kg
-                'picked_quantity' => 1.52,   // Picker weighed 1.52 kg
+                'requested_quantity' => 1.50,
+                'picked_quantity' => 1.52,
                 'unit_price' => 120.00,
                 'final_item_total' => 182.40,
                 'substitution_preference' => 'best_match',
@@ -396,7 +508,6 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // Seed realistic in-transit GPS breadcrumb
         DriverLocation::firstOrCreate(
             ['trip_id' => $trip->id, 'created_at' => now()->subMinutes(1)],
             [
@@ -404,6 +515,87 @@ class DatabaseSeeder extends Seeder
                 'longitude' => 38.77700000,
                 'heading' => 315.0,
                 'speed' => 28.5,
+            ]
+        );
+
+        // Order 2: Packed & Ready for Deliverer Pickup
+        $order2 = Order::firstOrCreate(
+            ['order_number' => 'ORD-20261007-READY1'],
+            [
+                'customer_id' => $customer->id,
+                'branch_id' => $branch->id,
+                'address_id' => $customerAddress->id,
+                'delivery_address_snapshot' => [
+                    'label' => 'home',
+                    'latitude' => 9.01250000,
+                    'longitude' => 38.76980000,
+                    'city' => 'Addis Ababa',
+                    'district_area' => 'Kazanchis',
+                    'street_name' => 'Menelik II Ave',
+                    'building_name_or_no' => 'Sunrise Luxury Apt',
+                    'house_villa_no' => 'B-42',
+                    'floor_number' => '4th Floor',
+                    'apartment_unit' => 'Apt 402',
+                    'gate_code' => '#1984',
+                    'customer_phone' => $customer->phone_number,
+                    'customer_name' => $customer->name,
+                ],
+                'status' => 'packed',
+                'delivery_type' => 'express_immediate',
+                'subtotal' => 360.00,
+                'delivery_fee' => 50.00,
+                'estimated_total' => 410.00,
+                'final_total' => 410.00,
+                'payment_method' => 'cash_on_delivery',
+                'payment_status' => 'pending',
+                'delivery_otp' => '629143',
+                'picker_id' => $picker->id,
+                'special_notes' => 'Handle organic apples with care.',
+            ]
+        );
+
+        if ($apple) {
+            OrderItem::firstOrCreate(
+                ['order_id' => $order2->id, 'product_id' => $apple->id],
+                [
+                    'requested_quantity' => 1.50,
+                    'picked_quantity' => 1.50,
+                    'unit_price' => 240.00,
+                    'final_item_total' => 360.00,
+                    'substitution_preference' => 'best_match',
+                ]
+            );
+        }
+
+        // Order 3: Newly Placed (Waiting for Supermarket Manager to pack)
+        $order3 = Order::firstOrCreate(
+            ['order_number' => 'ORD-20261007-NEW01'],
+            [
+                'customer_id' => $customer->id,
+                'branch_id' => $branch2->id,
+                'address_id' => $customerAddress->id,
+                'delivery_address_snapshot' => [
+                    'label' => 'home',
+                    'latitude' => 9.01250000,
+                    'longitude' => 38.76980000,
+                    'city' => 'Addis Ababa',
+                    'district_area' => 'Kazanchis',
+                    'street_name' => 'Menelik II Ave',
+                    'building_name_or_no' => 'Sunrise Luxury Apt',
+                    'house_villa_no' => 'B-42',
+                    'customer_phone' => $customer->phone_number,
+                    'customer_name' => $customer->name,
+                ],
+                'status' => 'placed',
+                'delivery_type' => 'express_immediate',
+                'subtotal' => 205.00,
+                'delivery_fee' => 50.00,
+                'estimated_total' => 255.00,
+                'final_total' => 255.00,
+                'payment_method' => 'cash_on_delivery',
+                'payment_status' => 'pending',
+                'delivery_otp' => '831092',
+                'special_notes' => 'Please bring before 6 PM.',
             ]
         );
     }

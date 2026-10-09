@@ -22,7 +22,7 @@ async function handleCheckout() {
   errorMessage.value = '';
 
   if (!authStore.isAuthenticated) {
-    router.push('/login?redirect=/cart');
+    router.push('/login?returnUrl=/cart');
     return;
   }
 

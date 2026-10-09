@@ -1,270 +1,133 @@
 <script setup>
-import { computed } from 'vue';
+import { defineProps } from 'vue';
 import { useCartStore } from '../stores/cart';
 
 const props = defineProps({
   product: {
     type: Object,
-    required: true,
-  },
+    required: true
+  }
 });
 
 const cartStore = useCartStore();
 
-const qtyInCart = computed(() => {
-  return cartStore.getItemQuantity(props.product.id);
-});
-
-const isWeighted = computed(() => {
-  return props.product.pricing_type === 'weighted';
-});
-
-const stepLabel = computed(() => {
-  if (isWeighted.value) {
-    const grams = props.product.step_weight_grams || 500;
-    return `${grams}g steps`;
-  }
-  return `per ${props.product.unit_of_measure}`;
-});
-
-function handleAdd() {
+function addToCart() {
   cartStore.addItem(props.product);
-}
-
-function handleIncrement() {
-  cartStore.updateQuantity(props.product.id, 1);
-}
-
-function handleDecrement() {
-  cartStore.updateQuantity(props.product.id, -1);
 }
 </script>
 
 <template>
-  <div class="product-card card">
-    <!-- Image & Badges -->
+  <div class="product-card">
     <div class="product-image-container">
-      <img
-        :src="product.image_url"
+      <img 
+        :src="product.image_url || '/images/placeholder-product.jpg'" 
         :alt="product.name"
         class="product-image"
-        loading="lazy"
       />
-      <div class="badge-overlay">
-        <span v-if="product.is_perishable" class="badge badge-green">
-          🌱 Fresh
-        </span>
-        <span class="badge" :class="isWeighted ? 'badge-amber' : 'badge-dark'">
-          {{ isWeighted ? '⚖️ Weighted' : '📦 Pack' }}
-        </span>
-      </div>
     </div>
-
-    <!-- Details -->
+    
     <div class="product-info">
-      <div class="product-header">
-        <span class="category-name">{{ product.category?.name || 'Groceries' }}</span>
-        <span class="unit-step">{{ stepLabel }}</span>
+      <h3 class="product-name">{{ product.name }}</h3>
+      
+      <div class="product-pricing">
+        <span v-if="product.discount_price" class="price-original">${{ product.price }}</span>
+        <span class="price-current">${{ product.discount_price || product.price }}</span>
       </div>
 
-      <h3 class="product-title" :title="product.name">
-        {{ product.name }}
-      </h3>
-
-      <div class="product-footer">
-        <div class="price-box">
-          <span class="currency">ETB</span>
-          <span class="price-value">{{ Number(product.price).toFixed(2) }}</span>
-          <span class="price-unit">/ {{ product.unit_of_measure }}</span>
-        </div>
-
-        <!-- Add / Stepper Button -->
-        <div class="action-box">
-          <button
-            v-if="qtyInCart === 0"
-            class="btn btn-primary add-btn"
-            @click="handleAdd"
-          >
-            <span>+</span> Add
-          </button>
-
-          <div v-else class="stepper">
-            <button class="step-btn" @click="handleDecrement" aria-label="Decrease">
-              -
-            </button>
-            <span class="step-count">
-              {{ isWeighted ? `${qtyInCart}kg` : qtyInCart }}
-            </span>
-            <button class="step-btn" @click="handleIncrement" aria-label="Increase">
-              +
-            </button>
-          </div>
-        </div>
-      </div>
+      <button @click="addToCart" class="btn-add-cart">
+        Add to cart
+      </button>
     </div>
   </div>
 </template>
 
 <style scoped>
 .product-card {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
   background: #ffffff;
-  border-radius: var(--radius-lg);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s;
+  cursor: pointer;
 }
 
 .product-card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #D5D9D9;
 }
 
 .product-image-container {
-  position: relative;
   width: 100%;
-  padding-top: 70%; /* 4:3 aspect ratio */
+  aspect-ratio: 1;
+  background: #F9FAFB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
-  background: #f1f5f9;
 }
 
 .product-image {
-  position: absolute;
-  top: 0;
-  left: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s ease;
-}
-
-.product-card:hover .product-image {
-  transform: scale(1.04);
-}
-
-.badge-overlay {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
 }
 
 .product-info {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  padding: 1rem 1.15rem 1.15rem;
+  padding: 1rem;
 }
 
-.product-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.4rem;
-}
-
-.category-name {
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--primary);
-  letter-spacing: 0.03em;
-}
-
-.unit-step {
-  font-size: 0.72rem;
-  color: var(--text-light);
+.product-name {
+  font-size: 0.9375rem;
   font-weight: 500;
-}
-
-.product-title {
-  font-size: 0.975rem;
-  font-weight: 700;
-  color: var(--dark);
-  line-height: 1.35;
-  margin-bottom: 0.85rem;
-  min-height: 2.7em;
+  color: #0F1111;
+  margin-bottom: 0.5rem;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  line-height: 1.3;
+  min-height: 2.6em;
 }
 
-.product-footer {
-  margin-top: auto;
+.product-pricing {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 0.5rem;
-  padding-top: 0.65rem;
-  border-top: 1px dashed #f1f5f9;
+  margin-bottom: 0.75rem;
 }
 
-.price-box {
-  display: flex;
-  align-items: baseline;
-  gap: 0.2rem;
+.price-original {
+  font-size: 0.875rem;
+  color: #6B7280;
+  text-decoration: line-through;
 }
 
-.currency {
-  font-size: 0.75rem;
+.price-current {
+  font-size: 1.125rem;
   font-weight: 700;
-  color: var(--text-muted);
+  color: #0F1111;
 }
 
-.price-value {
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: var(--dark);
-}
-
-.price-unit {
-  font-size: 0.72rem;
-  color: var(--text-muted);
+.btn-add-cart {
+  width: 100%;
+  padding: 0.625rem 1rem;
+  background: linear-gradient(to bottom, #F7DDBF, #F0C491);
+  border: 1px solid #AE7B3E;
+  border-radius: 8px;
+  font-size: 0.875rem;
   font-weight: 500;
+  color: #0F1111;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.add-btn {
-  padding: 0.45rem 0.95rem;
-  font-size: 0.85rem;
-  border-radius: var(--radius-md);
+.btn-add-cart:hover {
+  background: linear-gradient(to bottom, #F5D4A6, #EDB976);
+  border-color: #9B6B31;
 }
 
-.stepper {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  background: var(--primary-light);
-  border: 1px solid #a7f3d0;
-  border-radius: var(--radius-md);
-  padding: 0.2rem;
-}
-
-.step-btn {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #ffffff;
-  border-radius: var(--radius-sm);
-  font-weight: 700;
-  color: var(--primary);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-}
-.step-btn:hover {
-  background: var(--primary);
-  color: #ffffff;
-}
-
-.step-count {
-  font-size: 0.825rem;
-  font-weight: 700;
-  color: var(--dark);
-  padding: 0 0.25rem;
-  min-width: 32px;
-  text-align: center;
+.btn-add-cart:active {
+  background: #EDB976;
+  transform: scale(0.98);
 }
 </style>

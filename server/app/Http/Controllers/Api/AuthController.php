@@ -17,26 +17,48 @@ class AuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         $request->validate([
-            'login' => 'required|string', // Can be phone number or email
+            'login' => 'required|string', // Can be name (e.g. admin), phone number, or email
             'password' => 'required|string',
         ]);
 
-        $login = $request->input('login');
+        $login = trim($request->input('login'));
 
-        // Look up by phone_number or email
-        $user = User::where('phone_number', $login)
+        // Handle phone variations (e.g., 0969644384, +251969644384)
+        $cleanPhone = preg_replace('/[^0-9]/', '', $login);
+        $phoneVariants = array_unique(array_filter([
+            $login,
+            $cleanPhone,
+            strlen($cleanPhone) >= 9 ? '0' . substr($cleanPhone, -9) : null,
+            strlen($cleanPhone) >= 9 ? '+251' . substr($cleanPhone, -9) : null,
+        ]));
+
+        // Look up by name, email, or phone number
+        $user = User::where('name', $login)
             ->orWhere('email', $login)
+            ->orWhereIn('phone_number', $phoneVariants)
             ->first();
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
-                'login' => ['Invalid phone number / email or password.'],
+                'login' => ['Invalid username, phone number, or password.'],
             ]);
         }
 
         if (! $user->is_active) {
             return response()->json([
-                'message' => 'Your account is deactivated. Please contact support.',
+                'message' => 'Your account has been removed or deactivated by the General Operations Manager.',
+            ], 403);
+        }
+
+        if ($user->approval_status === 'pending') {
+            return response()->json([
+                'message' => 'Your account is pending approval by the General Operations Manager. Please await authorization.',
+            ], 403);
+        }
+
+        if ($user->approval_status === 'rejected') {
+            return response()->json([
+                'message' => 'Your account has been rejected by the General Operations Manager.',
             ], 403);
         }
 
@@ -47,9 +69,12 @@ class AuthController extends Controller
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
                 'email' => $user->email,
                 'phone_number' => $user->phone_number,
                 'role' => $user->role,
+                'approval_status' => $user->approval_status,
                 'avatar_url' => $user->avatar_url,
             ],
             'token' => $token,

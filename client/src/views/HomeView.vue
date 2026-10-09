@@ -2,9 +2,9 @@
 import { ref, onMounted, watch } from 'vue';
 import api from '../services/api';
 import ProductCard from '../components/ProductCard.vue';
-import { useAuthStore } from '../stores/auth';
+import { useCartStore } from '../stores/cart';
 
-const authStore = useAuthStore();
+const cartStore = useCartStore();
 
 const categories = ref([]);
 const products = ref([]);
@@ -24,9 +24,7 @@ async function loadCategories() {
 async function loadProducts() {
   loading.value = true;
   try {
-    const params = {
-      branch_id: authStore.selectedBranchId,
-    };
+    const params = {};
     if (selectedCategory.value) {
       params.category = selectedCategory.value;
     }
@@ -62,58 +60,58 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="storefront-page">
-    <!-- Clean Search & Filter Bar -->
-    <div class="storefront-top card">
-      <div class="search-input-wrapper">
-        <span class="search-ico">🔍</span>
-        <input
-          type="text"
-          v-model="searchQuery"
-          placeholder="Search fresh bananas, whole milk, chicken breast, coffee..."
-        />
-        <button v-if="searchQuery" class="clear-btn" @click="searchQuery = ''">✕</button>
+  <div class="home-page">
+    <!-- Hero Section -->
+    <div class="hero-section">
+      <div class="hero-content">
+        <h1 class="hero-title">Fresh groceries delivered to your door</h1>
+        <p class="hero-subtitle">Shop from thousands of products • Get delivery in 30 minutes</p>
       </div>
+    </div>
 
-      <!-- Compact Category Aisle Pills -->
-      <div class="category-pills">
-        <button
-          class="pill-btn"
-          :class="{ active: selectedCategory === '' }"
-          @click="handleCategorySelect('')"
-        >
-          All Aisles ({{ products.length }})
-        </button>
-
+    <!-- Categories -->
+    <div class="categories-section">
+      <h2 class="section-title">Shop by category</h2>
+      <div class="category-grid">
         <button
           v-for="cat in categories"
           :key="cat.id"
-          class="pill-btn"
+          class="category-card"
           :class="{ active: selectedCategory === cat.slug }"
           @click="handleCategorySelect(cat.slug)"
         >
-          <span>{{ cat.icon_url }}</span>
-          <span>{{ cat.name }}</span>
+          <div class="category-icon">{{ cat.icon_url || '🛒' }}</div>
+          <span class="category-name">{{ cat.name }}</span>
         </button>
       </div>
     </div>
 
-    <!-- Product Grid -->
-    <div class="products-container">
-      <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
-        <p>Loading fresh supermarket inventory...</p>
+    <!-- Products -->
+    <div class="products-section">
+      <div class="section-header">
+        <h2 class="section-title">
+          {{ selectedCategory ? 'Products in ' + selectedCategory : 'All products' }}
+        </h2>
+        <span class="result-count">{{ products.length }} items</span>
       </div>
 
-      <div v-else-if="products.length === 0" class="empty-state card">
-        <span class="empty-icon">🥦</span>
-        <h3>No groceries match your search</h3>
-        <p>Try searching another item or select a different category aisle.</p>
-        <button class="btn btn-outline" @click="selectedCategory = ''; searchQuery = '';">
-          Clear Filters
+      <!-- Loading State -->
+      <div v-if="loading" class="loading-container">
+        <div class="spinner"></div>
+        <p class="loading-text">Loading products...</p>
+      </div>
+
+      <!-- Empty State -->
+      <div v-else-if="products.length === 0" class="empty-container">
+        <div class="empty-icon">🔍</div>
+        <h3 class="empty-title">No products found</h3>
+        <p class="empty-text">Try adjusting your search or filters</p>
+        <button class="btn-secondary" @click="selectedCategory = ''; searchQuery = '';">
+          Clear all filters
         </button>
       </div>
 
+      <!-- Product Grid -->
       <div v-else class="product-grid">
         <ProductCard
           v-for="prod in products"
@@ -126,110 +124,128 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.storefront-page {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+.home-page {
+  min-height: 100vh;
+  background: #fafaf9;
 }
 
-.storefront-top {
-  padding: 1.25rem 1.5rem;
-  display: flex;
-  flex-direction: column;
+/* Hero Section */
+.hero-section {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+.hero-content {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.hero-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #0F1111;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.hero-subtitle {
+  font-size: 1.125rem;
+  color: #565959;
+  font-weight: 400;
+}
+
+/* Categories Section */
+.categories-section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0F1111;
+  margin-bottom: 1.25rem;
+}
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 1rem;
-  background: #ffffff;
 }
 
-.search-input-wrapper {
+.category-card {
+  background: #ffffff;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 1.25rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.category-card:hover {
+  border-color: #D5D9D9;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.category-card.active {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.category-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.category-name {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #0F1111;
+}
+
+/* Products Section */
+.products-section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.section-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  background: #f8fafc;
-  border: 1.5px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 0.65rem 1rem;
-  transition: var(--transition);
+  margin-bottom: 1.5rem;
 }
 
-.search-input-wrapper:focus-within {
-  border-color: var(--primary);
-  background: #ffffff;
-  box-shadow: 0 0 0 3px var(--primary-glow);
-}
-
-.search-ico {
-  font-size: 1.1rem;
-  margin-right: 0.75rem;
-  color: var(--text-light);
-}
-
-.search-input-wrapper input {
-  flex: 1;
-  border: none;
-  background: transparent;
-  font-size: 0.95rem;
-  color: var(--dark);
-}
-
-.clear-btn {
-  color: var(--text-light);
-  font-size: 0.85rem;
-}
-
-.category-pills {
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  padding-bottom: 0.25rem;
-}
-
-.pill-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.95rem;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--border-color);
-  background: #ffffff;
-  font-size: 0.825rem;
-  font-weight: 600;
-  color: var(--text-main);
-  white-space: nowrap;
-  transition: var(--transition);
-}
-
-.pill-btn:hover {
-  border-color: var(--primary);
-  background: var(--primary-light);
-}
-
-.pill-btn.active {
-  background: var(--primary);
-  color: #ffffff;
-  border-color: var(--primary);
-  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
+.result-count {
+  font-size: 0.875rem;
+  color: #6B7280;
 }
 
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 1.25rem;
 }
 
-.loading-state, .empty-state {
+/* Loading State */
+.loading-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 4rem 1rem;
-  text-align: center;
-  gap: 0.75rem;
+  padding: 4rem 2rem;
 }
 
 .spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid var(--primary-light);
-  border-top-color: var(--primary);
+  width: 40px;
+  height: 40px;
+  border: 3px solid #E5E7EB;
+  border-top-color: #067D62;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -238,7 +254,83 @@ onMounted(() => {
   to { transform: rotate(360deg); }
 }
 
+.loading-text {
+  margin-top: 1rem;
+  color: #6B7280;
+  font-size: 0.875rem;
+}
+
+/* Empty State */
+.empty-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+}
+
 .empty-icon {
-  font-size: 2.5rem;
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.empty-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #0F1111;
+  margin-bottom: 0.5rem;
+}
+
+.empty-text {
+  color: #6B7280;
+  margin-bottom: 1.5rem;
+}
+
+.btn-secondary {
+  padding: 0.75rem 1.5rem;
+  background: #ffffff;
+  border: 1px solid #D5D9D9;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #0F1111;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  border-color: #A2A6AC;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 1.75rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1rem;
+  }
+
+  .category-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .category-card {
+    padding: 1rem 0.75rem;
+  }
+
+  .category-icon {
+    font-size: 2rem;
+  }
+
+  .product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1rem;
+  }
 }
 </style>

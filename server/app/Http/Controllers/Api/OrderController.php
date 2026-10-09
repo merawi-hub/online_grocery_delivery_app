@@ -143,11 +143,43 @@ class OrderController extends Controller
      */
     public function show(Request $request, int $id): JsonResponse
     {
-        $order = $request->user()
-            ->orders()
-            ->with(['branch', 'items.product', 'driverTrip.driver', 'driverTrip.latestLocation'])
-            ->findOrFail($id);
+        $user = $request->user();
+        $query = Order::with(['branch', 'items.product', 'driverTrip.driver', 'driverTrip.latestLocation']);
+
+        if ($user && $user->role === 'customer') {
+            $order = $query->where('customer_id', $user->id)->findOrFail($id);
+        } else {
+            $order = $query->findOrFail($id);
+        }
 
         return response()->json($order);
+    }
+
+    /**
+     * Customer confirms delivery received.
+     * Core requirement: "delivery confirmed when recieved"
+     */
+    public function confirmReceived(Request $request, int $id): JsonResponse
+    {
+        $order = Order::with(['branch', 'driverTrip'])->findOrFail($id);
+
+        $order->status = 'delivered';
+        if ($order->payment_method === 'cash_on_delivery') {
+            $order->payment_status = 'paid';
+        }
+        $order->final_total = $order->estimated_total;
+        $order->save();
+
+        if ($order->driverTrip) {
+            $order->driverTrip->update([
+                'status' => 'completed',
+                'completed_at' => now(),
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Delivery confirmed! Thank you for shopping with us.',
+            'order' => $order->fresh(['branch', 'items.product', 'driverTrip.driver']),
+        ]);
     }
 }

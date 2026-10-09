@@ -43,9 +43,9 @@ provide('sidebarState', {
 onMounted(async () => {
   window.addEventListener('keydown', handleKeydown);
 
-  // If not logged in as store manager, automatically authenticate Sara Manager for prototype
+  // If not logged in as store manager, authenticate default store manager for prototype
   if (!authStore.isAuthenticated || authStore.userRole !== 'store_manager') {
-    await authStore.login('+251911000002', 'password123');
+    await authStore.login('0911000002', 'password123');
   }
 });
 
@@ -70,66 +70,8 @@ onUnmounted(() => {
 
     <!-- Manager Main Viewport -->
     <div class="manager-viewport">
-      <!-- Minimalist Top Bar with Nav Minimizer Control -->
+      <!-- Manager Top Bar (Cleared, ready for new options) -->
       <header class="manager-topbar">
-        <div class="topbar-left">
-          <!-- One-click Nav Bar Minimizer Toggle -->
-          <button
-            class="nav-toggle-btn"
-            @click="toggleSidebar"
-            :class="{ active: isSidebarMinimized }"
-            :title="isSidebarMinimized ? 'Expand navigation bar' : 'Minimize navigation bar for extra table space'"
-            aria-label="Toggle Navigation Bar"
-          >
-            <span class="toggle-icon">{{ isSidebarMinimized ? '⇥' : '⇤' }}</span>
-            <span class="toggle-text">{{ isSidebarMinimized ? 'Expand Nav' : 'Minimize Nav' }}</span>
-          </button>
-
-          <span class="topbar-separator"></span>
-
-          <span class="branch-label">Bole Medhanialem Flagship • Store Console</span>
-
-          <!-- Visual indicator when wide space mode is engaged -->
-          <span
-            v-if="isSidebarMinimized"
-            class="space-badge"
-            title="Navigation bar is minimized: page has maximum width for data tables and catalog items"
-          >
-            ⚡ Max Space Mode Active
-          </span>
-        </div>
-
-        <div class="topbar-right">
-          <!-- Full Width Canvas Toggle for Edge-to-Edge Data Access -->
-          <button
-            class="canvas-mode-btn"
-            @click="toggleContentWide"
-            :class="{ active: isContentWide }"
-            :title="isContentWide ? 'Reset to centered container' : 'Expand content to 100% full screen width'"
-          >
-            <span class="canvas-icon">⛶</span>
-            <span>{{ isContentWide ? 'Centered' : 'Full Width' }}</span>
-          </button>
-
-          <!-- Store Online Toggle -->
-          <button
-            class="store-status-btn"
-            :class="{ open: isStoreOpen }"
-            @click="toggleStoreOpen"
-            title="Toggle store intake"
-          >
-            <span class="status-indicator"></span>
-            <span>{{ isStoreOpen ? 'Accepting Orders' : 'Store Paused' }}</span>
-          </button>
-
-          <!-- Shortcuts -->
-          <router-link to="/admin123/login" class="nav-shortcut">
-            Login
-          </router-link>
-          <router-link to="/admin123/signup" class="nav-shortcut signup-shortcut">
-            + New Manager
-          </router-link>
-        </div>
       </header>
 
       <!-- Manager Sub-Page Content with Dynamic Full-Width Expansion -->
