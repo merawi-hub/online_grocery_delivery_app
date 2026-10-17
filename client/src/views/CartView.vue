@@ -16,6 +16,27 @@ const authStore = useAuthStore();
 const isSubmitting = ref(false);
 const errorMessage = ref('');
 
+function formatImageUrl(url) {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+  if (url.startsWith('/storage/')) {
+    return `http://127.0.0.1:8000${url}`;
+  }
+  if (url.startsWith('storage/')) {
+    return `http://127.0.0.1:8000/${url}`;
+  }
+  return url;
+}
+
+function handleImageError(e) {
+  e.target.style.display = 'none';
+  if (e.target.nextElementSibling) {
+    e.target.nextElementSibling.style.display = 'flex';
+  }
+}
+
 const activeAddress = computed(() => addressStore.activeAddress);
 
 async function handleCheckout() {
@@ -93,7 +114,12 @@ async function handleCheckout() {
 
             <div class="items-list">
               <div v-for="item in cartStore.items" :key="item.product.id" class="cart-item">
-                <img :src="item.product.image_url" :alt="item.product.name" class="item-img" />
+                <div class="item-img-container">
+                  <img v-if="formatImageUrl(item.product.image_url)" :src="formatImageUrl(item.product.image_url)" :alt="item.product.name" class="item-img" @error="handleImageError" />
+                  <div class="item-img-placeholder" :style="{ display: formatImageUrl(item.product.image_url) ? 'none' : 'flex' }">
+                    🛒
+                  </div>
+                </div>
 
                 <div class="item-details">
                   <div class="item-title-row">
@@ -329,12 +355,31 @@ async function handleCheckout() {
   padding-bottom: 0;
 }
 
-.item-img {
+.item-img-container {
   width: 80px;
   height: 80px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #f1f5f9;
+  position: relative;
+}
+
+.item-img {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   border-radius: var(--radius-md);
-  background: #f1f5f9;
+}
+
+.item-img-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
 }
 
 .item-details {

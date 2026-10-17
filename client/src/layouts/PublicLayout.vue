@@ -124,6 +124,21 @@ function goToOrders() {
       </div>
     </header>
 
+    <!-- Navigation Bar -->
+    <nav class="nav-bar">
+      <div class="container nav-content">
+        <router-link to="/" class="nav-link" :class="{ active: $route.path === '/' }">
+          <span class="nav-link-icon">🏠</span> Home
+        </router-link>
+        <router-link to="/products" class="nav-link" :class="{ active: $route.path === '/products' }">
+          <span class="nav-link-icon">🥦</span> All Products
+        </router-link>
+        <router-link to="/tracking" class="nav-link" :class="{ active: $route.path.startsWith('/tracking') }">
+          <span class="nav-link-icon">🚚</span> Track Order
+        </router-link>
+      </div>
+    </nav>
+
     <!-- Main Content -->
     <main class="main-content">
       <router-view />
@@ -220,6 +235,47 @@ function goToOrders() {
   top: 0;
   z-index: 100;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.nav-bar {
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+
+.nav-content {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.5rem 1rem;
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #475569;
+  text-decoration: none;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.nav-link:hover {
+  color: #0f172a;
+  background: #f8fafc;
+}
+
+.nav-link.active {
+  color: #0f172a;
+  background: #f1f5f9;
+  font-weight: 700;
+}
+
+.nav-link-icon {
+  font-size: 1.1rem;
 }
 
 .header-content {

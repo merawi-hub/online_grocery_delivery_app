@@ -1,9 +1,7 @@
 <script setup>
-import { ref, onMounted, computed, watch, inject } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../../services/api';
-
-const sidebarState = inject('sidebarState', null);
 
 const route = useRoute();
 const orders = ref([]);
@@ -91,26 +89,92 @@ onMounted(() => {
         </p>
       </div>
 
-      <div class="head-right-group">
-        <button
-          v-if="sidebarState"
-          type="button"
-          class="btn btn-outline btn-sm space-toggle-btn"
-          @click="sidebarState.toggle"
-          :title="sidebarState.isMinimized.value ? 'Restore sidebar width' : 'Minimize nav bar for maximum table space'"
-        >
-          <span>{{ sidebarState.isMinimized.value ? '⇥ Restore Nav' : '⇤ Maximize Space' }}</span>
+      <div class="head-actions">
+        <router-link to="/admin123/inventory" class="btn btn-outline">
+          <span>📦</span> Manage Inventory
+        </router-link>
+        <router-link to="/admin123/dashboard" class="btn btn-outline">
+          <span>📊</span> Dashboard
+        </router-link>
+        <button class="btn btn-primary">
+          <span>➕</span> Add Product
         </button>
-
-        <div class="stats-counter-group">
-          <span class="counter-box">
-            Available: <strong>{{ availableOrders.length }}</strong>
-          </span>
-          <span class="counter-box">
-            Delivered: <strong>{{ deliveredOrders.length }}</strong>
-          </span>
-        </div>
       </div>
+    </div>
+
+    <!-- Quick Navigation Bar -->
+    <div class="quick-nav-bar">
+      <button
+        class="nav-btn"
+        :class="{ active: activeSection === 'available' && subStatusFilter === 'all' }"
+        @click="activeSection = 'available'; subStatusFilter = 'all';"
+      >
+        <span class="nav-icon">📥</span>
+        <div class="nav-content">
+          <span class="nav-label">Available Orders</span>
+          <span class="nav-count">{{ availableOrders.length }}</span>
+        </div>
+      </button>
+
+      <button
+        class="nav-btn"
+        :class="{ active: activeSection === 'delivered' }"
+        @click="activeSection = 'delivered'; subStatusFilter = 'all';"
+      >
+        <span class="nav-icon">✅</span>
+        <div class="nav-content">
+          <span class="nav-label">Delivered Orders</span>
+          <span class="nav-count">{{ deliveredOrders.length }}</span>
+        </div>
+      </button>
+
+      <button
+        class="nav-btn"
+        :class="{ active: activeSection === 'available' && subStatusFilter === 'placed' }"
+        @click="activeSection = 'available'; subStatusFilter = 'placed';"
+      >
+        <span class="nav-icon">🆕</span>
+        <div class="nav-content">
+          <span class="nav-label">New Orders</span>
+          <span class="nav-count">{{ availableOrders.filter(o => o.status === 'placed').length }}</span>
+        </div>
+      </button>
+
+      <button
+        class="nav-btn"
+        :class="{ active: activeSection === 'available' && subStatusFilter === 'picking' }"
+        @click="activeSection = 'available'; subStatusFilter = 'picking';"
+      >
+        <span class="nav-icon">📋</span>
+        <div class="nav-content">
+          <span class="nav-label">Picking Queue</span>
+          <span class="nav-count">{{ availableOrders.filter(o => o.status === 'picking').length }}</span>
+        </div>
+      </button>
+
+      <button
+        class="nav-btn"
+        :class="{ active: activeSection === 'available' && subStatusFilter === 'packed' }"
+        @click="activeSection = 'available'; subStatusFilter = 'packed';"
+      >
+        <span class="nav-icon">📦</span>
+        <div class="nav-content">
+          <span class="nav-label">Packed & Ready</span>
+          <span class="nav-count">{{ availableOrders.filter(o => o.status === 'packed').length }}</span>
+        </div>
+      </button>
+
+      <button
+        class="nav-btn"
+        :class="{ active: activeSection === 'available' && subStatusFilter === 'out_for_delivery' }"
+        @click="activeSection = 'available'; subStatusFilter = 'out_for_delivery';"
+      >
+        <span class="nav-icon">🚚</span>
+        <div class="nav-content">
+          <span class="nav-label">Out for Delivery</span>
+          <span class="nav-count">{{ availableOrders.filter(o => o.status === 'out_for_delivery').length }}</span>
+        </div>
+      </button>
     </div>
 
     <!-- Alert Banner -->
@@ -353,38 +417,130 @@ onMounted(() => {
   margin-top: 0.2rem;
 }
 
-.head-right-group {
+.head-actions {
   display: flex;
   align-items: center;
   gap: 0.75rem;
 }
 
-.space-toggle-btn {
-  font-size: 0.75rem;
-  background: #ffffff;
-}
-
-.space-toggle-btn:hover {
-  background: #f9fafb;
-  border-color: #111827;
-}
-
-.stats-counter-group {
-  display: flex;
+.btn {
+  display: inline-flex;
+  align-items: center;
   gap: 0.5rem;
-}
-
-.counter-box {
-  background: #ffffff;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
   border: 1px solid #e5e7eb;
-  border-radius: 4px;
-  padding: 0.35rem 0.65rem;
-  font-size: 0.75rem;
-  color: #4b5563;
+  background: white;
+  color: #111827;
+  transition: all 0.2s;
+  text-decoration: none;
 }
 
-.counter-box strong {
-  color: #111827;
+.btn:hover {
+  background: #f8fafc;
+  border-color: #0f172a;
+}
+
+.btn-outline {
+  background: white;
+  border: 1px solid #e5e7eb;
+  color: #475569;
+}
+
+.btn-outline:hover {
+  background: #f8fafc;
+  border-color: #0f172a;
+  color: #0f172a;
+}
+
+.btn-primary {
+  background: #0f172a;
+  color: white;
+  border-color: #0f172a;
+}
+
+.btn-primary:hover {
+  background: #1e293b;
+}
+
+/* Quick Navigation Bar */
+.quick-nav-bar {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.75rem;
+  background: white;
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+}
+
+.nav-btn.active {
+  background: #0f172a;
+  border-color: #0f172a;
+}
+
+.nav-btn.active .nav-icon {
+  filter: grayscale(0) brightness(2);
+}
+
+.nav-btn.active .nav-label {
+  color: white;
+}
+
+.nav-btn.active .nav-count {
+  background: white;
+  color: #0f172a;
+}
+
+.nav-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.nav-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.nav-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.nav-count {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+  background: white;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  display: inline-block;
+  align-self: flex-start;
 }
 
 .success-banner {

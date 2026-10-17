@@ -177,115 +177,13 @@ class MultiStoreMarketplaceSeeder extends Seeder
             $categoryModels[] = Category::create($categoryData);
         }
 
-        // Create Products
-        $productBaseData = [
-            ['name' => 'Organic Bananas', 'slug' => 'organic-bananas', 'category_id' => 1],
-            ['name' => 'Strawberries', 'slug' => 'strawberries', 'category_id' => 1],
-            ['name' => 'Avocados', 'slug' => 'avocados', 'category_id' => 1],
-            ['name' => 'Baby Spinach', 'slug' => 'baby-spinach', 'category_id' => 1],
-            ['name' => 'Cherry Tomatoes', 'slug' => 'cherry-tomatoes', 'category_id' => 1],
-            ['name' => 'Carrots', 'slug' => 'carrots', 'category_id' => 1],
-            ['name' => 'Broccoli', 'slug' => 'broccoli', 'category_id' => 1],
-            ['name' => 'Red Bell Peppers', 'slug' => 'red-bell-peppers', 'category_id' => 1],
-            
-            ['name' => 'Whole Milk', 'slug' => 'whole-milk', 'category_id' => 2],
-            ['name' => 'Greek Yogurt', 'slug' => 'greek-yogurt', 'category_id' => 2],
-            ['name' => 'Large Eggs', 'slug' => 'large-eggs', 'category_id' => 2],
-            ['name' => 'Cheddar Cheese', 'slug' => 'cheddar-cheese', 'category_id' => 2],
-            ['name' => 'Butter', 'slug' => 'butter', 'category_id' => 2],
-            ['name' => 'Cream Cheese', 'slug' => 'cream-cheese', 'category_id' => 2],
-            
-            ['name' => 'Chicken Breast', 'slug' => 'chicken-breast', 'category_id' => 3],
-            ['name' => 'Ground Beef', 'slug' => 'ground-beef', 'category_id' => 3],
-            ['name' => 'Atlantic Salmon', 'slug' => 'atlantic-salmon', 'category_id' => 3],
-            ['name' => 'Pork Chops', 'slug' => 'pork-chops', 'category_id' => 3],
-            
-            ['name' => 'Whole Wheat Bread', 'slug' => 'whole-wheat-bread', 'category_id' => 4],
-            ['name' => 'Croissants', 'slug' => 'croissants', 'category_id' => 4],
-            ['name' => 'Bagels', 'slug' => 'bagels', 'category_id' => 4],
-            ['name' => 'Sourdough Bread', 'slug' => 'sourdough-bread', 'category_id' => 4],
-            
-            ['name' => 'Pasta Penne', 'slug' => 'pasta-penne', 'category_id' => 5],
-            ['name' => 'White Rice', 'slug' => 'white-rice', 'category_id' => 5],
-            ['name' => 'Canned Tomatoes', 'slug' => 'canned-tomatoes', 'category_id' => 5],
-            ['name' => 'Black Beans', 'slug' => 'black-beans', 'category_id' => 5],
-            ['name' => 'Olive Oil', 'slug' => 'olive-oil', 'category_id' => 5],
-            ['name' => 'Peanut Butter', 'slug' => 'peanut-butter', 'category_id' => 5],
-            
-            ['name' => 'Orange Juice', 'slug' => 'orange-juice', 'category_id' => 6],
-            ['name' => 'Bottled Water', 'slug' => 'bottled-water', 'category_id' => 6],
-            ['name' => 'Coffee Beans', 'slug' => 'coffee-beans', 'category_id' => 6],
-            ['name' => 'Green Tea', 'slug' => 'green-tea', 'category_id' => 6],
-            ['name' => 'Cola', 'slug' => 'cola', 'category_id' => 6],
-            
-            ['name' => 'Potato Chips', 'slug' => 'potato-chips', 'category_id' => 7],
-            ['name' => 'Granola Bars', 'slug' => 'granola-bars', 'category_id' => 7],
-            ['name' => 'Chocolate Chip Cookies', 'slug' => 'chocolate-chip-cookies', 'category_id' => 7],
-            ['name' => 'Pretzels', 'slug' => 'pretzels', 'category_id' => 7],
-            ['name' => 'Trail Mix', 'slug' => 'trail-mix', 'category_id' => 7],
-            
-            ['name' => 'Frozen Pizza', 'slug' => 'frozen-pizza', 'category_id' => 8],
-            ['name' => 'Ice Cream', 'slug' => 'ice-cream', 'category_id' => 8],
-            ['name' => 'Frozen Vegetables', 'slug' => 'frozen-vegetables', 'category_id' => 8],
-            ['name' => 'Frozen Waffles', 'slug' => 'frozen-waffles', 'category_id' => 8],
-            ['name' => 'Fish Sticks', 'slug' => 'fish-sticks', 'category_id' => 8],
-            
-            ['name' => 'Paper Towels', 'slug' => 'paper-towels', 'category_id' => 9],
-            ['name' => 'Toilet Paper', 'slug' => 'toilet-paper', 'category_id' => 9],
-            ['name' => 'Dish Soap', 'slug' => 'dish-soap', 'category_id' => 9],
-            ['name' => 'Laundry Detergent', 'slug' => 'laundry-detergent', 'category_id' => 9],
-            ['name' => 'All-Purpose Cleaner', 'slug' => 'all-purpose-cleaner', 'category_id' => 9],
-            
-            ['name' => 'Shampoo', 'slug' => 'shampoo', 'category_id' => 10],
-            ['name' => 'Toothpaste', 'slug' => 'toothpaste', 'category_id' => 10],
-            ['name' => 'Deodorant', 'slug' => 'deodorant', 'category_id' => 10],
-            ['name' => 'Hand Soap', 'slug' => 'hand-soap', 'category_id' => 10],
-            ['name' => 'Body Lotion', 'slug' => 'body-lotion', 'category_id' => 10],
-        ];
-
-        $products = [];
-        foreach ($productBaseData as $index => $data) {
-            $products[] = array_merge($data, [
-                'sku' => 'SKU-' . str_pad($index + 1, 5, '0', STR_PAD_LEFT),
-                'barcode' => '123456789' . str_pad($index + 1, 4, '0', STR_PAD_LEFT),
-                'description' => 'Quality ' . strtolower($data['name']),
-                'unit_of_measure' => 'each',
-            ]);
-        }
-
-        $productModels = [];
-        foreach ($products as $productData) {
-            $productModels[] = Product::create($productData);
-        }
-
-        // Assign products to branches with varying availability and prices
-        $basePrice = [1.99, 4.99, 3.99, 3.49, 2.99, 1.79, 2.49, 4.99, 4.49, 5.99, 3.99, 6.99, 4.99, 3.49, 5.99, 6.49, 12.99, 4.99, 3.49, 4.99, 3.99, 5.49, 1.99, 8.99, 1.49, 1.29, 12.99, 4.99, 5.99, 6.99, 9.99, 4.49, 5.99, 3.99, 4.49, 3.49, 2.99, 6.99, 6.99, 5.99, 2.99, 3.49, 7.99, 12.99, 14.99, 3.99, 11.99, 4.49, 6.99, 4.49, 5.99, 3.49, 7.99];
-        
-        foreach ($branches as $branch) {
-            // Each branch gets 70-90% of all products
-            $productsToAssign = fake()->numberBetween(40, 50);
-            $selectedProducts = fake()->randomElements($productModels, $productsToAssign);
-
-            foreach ($selectedProducts as $index => $product) {
-                // Vary price slightly by branch (±10%)
-                $productIndex = array_search($product, $productModels);
-                $productBasePrice = $basePrice[$productIndex] ?? 5.99;
-                $priceVariation = fake()->randomFloat(2, -0.10, 0.10);
-                $branchPrice = round($productBasePrice * (1 + $priceVariation), 2);
-
-                BranchProduct::create([
-                    'branch_id' => $branch->id,
-                    'product_id' => $product->id,
-                    'stock_quantity' => fake()->numberBetween(10, 200),
-                    'is_in_stock' => true,
-                    'price' => $branchPrice,
-                ]);
-            }
-        }
+        // Products and inventory are now managed dynamically by Store Managers via the Manager Portal (/admin123/inventory).
+        // No hardcoded or dummy products are pre-seeded so the catalog only displays genuine items added by managers.
 
         $this->command->info('Multi-store marketplace seeded successfully!');
         $this->command->info('- 5 Supermarkets with 12 total branches');
-        $this->command->info('- 53 Products across 10 categories');
+        $this->command->info('- 10 Core Categories ready for Manager inventory');
+        $this->command->info('- 12 Managers, 12 Pickers, 5 Drivers, 10 Customers, 1 Admin');
         $this->command->info('- 12 Managers, 12 Pickers, 5 Drivers, 10 Customers, 1 Admin');
         $this->command->info('Login credentials: email/password for any user');
     }

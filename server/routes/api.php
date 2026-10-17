@@ -25,6 +25,7 @@ Route::prefix('catalog')->group(function () {
     Route::get('/branches', [CatalogController::class, 'getBranches']);
     Route::get('/categories', [CatalogController::class, 'getCategories']);
     Route::get('/products', [CatalogController::class, 'getProducts']);
+    Route::get('/product-image/{filename}', [CatalogController::class, 'getProductImage']);
 });
 
 /*
@@ -52,6 +53,18 @@ Route::prefix('admin')->group(function () {
 
     // Order Dispatch & Deliverer Assignment
     Route::post('/orders/{id}/assign-deliverer', [AdminController::class, 'assignDelivererToOrder']);
+
+    // Products Management (Global Catalog)
+    Route::get('/products', [AdminController::class, 'getProducts']);
+    Route::post('/products', [AdminController::class, 'storeProduct']);
+    Route::put('/products/{id}', [AdminController::class, 'updateProduct']);
+    Route::delete('/products/{id}', [AdminController::class, 'deleteProduct']);
+
+    // Categories Management
+    Route::get('/categories', [AdminController::class, 'getCategories']);
+    Route::post('/categories', [AdminController::class, 'storeCategory']);
+    Route::put('/categories/{id}', [AdminController::class, 'updateCategory']);
+    Route::delete('/categories/{id}', [AdminController::class, 'deleteCategory']);
 });
 
 /*
@@ -70,6 +83,8 @@ Route::prefix('manager')->group(function () {
     Route::get('/orders', [ManagerController::class, 'getOrders']);
     Route::patch('/orders/{id}/status', [ManagerController::class, 'updateOrderStatus']);
     Route::put('/branch', [ManagerController::class, 'updateBranchSettings']);
+    Route::post('/upload-image', [ManagerController::class, 'uploadImage']);
+    Route::post('/categories', [ManagerController::class, 'storeCategory']);
 });
 
 /*

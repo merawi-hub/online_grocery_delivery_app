@@ -4,14 +4,18 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
+use App\Models\BranchProduct;
+use App\Models\Category;
 use App\Models\DriverTrip;
 use App\Models\Order;
+use App\Models\Product;
 use App\Models\Supermarket;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
@@ -412,6 +416,435 @@ class AdminController extends Controller
 
         return response()->json([
             'message' => "Deliverer '{$name}' has been successfully removed.",
+        ]);
+    }
+
+    // ==================== Product Management ====================
+
+    /**
+     * List all products (global catalog).
+     */
+    /**
+     * List all products (global catalog).
+     */
+    public function getProducts(Request $request): JsonResponse
+    {
+        $query = Product::with(['category', 'branchProducts'])->orderByDesc('created_at');
+
+        // Optional filters
+        if ($request->has('category_id') && $request->input('category_id') !== 'all') {
+            $query->where('category_id', $request->input('category_id'));
+        }
+
+        if ($request->has('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('sku', 'like', "%{$search}%")
+                  ->orWhere('barcode', 'like', "%{$search}%");
+            });
+        }
+
+        $products = $query->get()->map(function ($p) {
+            $bp = $p->branchProducts->first();
+            return [
+                'id' => $p->id,
+                'name' => $p->name,
+                'description' => $p->description,
+                'image_url' => $p->image_url,
+                'category_id' => $p->category_id,
+                'category_name' => $p->category ? $p->category->name : 'Uncategorized',
+                'base_price' => $bp ? floatval($bp->price) : 0.00,
+                'unit' => $p->unit_of_measure ?: 'piece',
+                'barcode' => $p->barcode ?: $p->sku,
+                'is_active' => (bool) $p->is_active,
+                'created_at' => $p->created_at ? $p->created_at->toISOString() : null,
+                'updated_at' => $p->updated_at ? $p->updated_at->toISOString() : null,
+            ];
+        });
+
+        return response()->json([
+            'products' => $products,
+        ]);
+    }
+
+    /**
+     * Process image URL, decode base64, or format public storage link.
+     */
+    private function processImageUrl(?string $imageUrl): ?string
+    {
+        if (empty($imageUrl)) {
+            return null;
+        }
+
+        // If base64 data URI was provided
+        if (preg_match('/^data:image\/(\w+);base64,/', $imageUrl, $type)) {
+            $data = substr($imageUrl, strpos($imageUrl, ',') + 1);
+            $ext = strtolower($type[1]);
+            if (!in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+                $ext = 'jpg';
+            }
+            $decoded = base64_decode($data);
+            if ($decoded !== false) {
+                $storageDir = storage_path('app/public/products');
+                if (!is_dir($storageDir)) {
+                    mkdir($storageDir, 0755, true);
+                }
+                $fileName = 'prod_' . time() . '_' . Str::random(8) . '.' . $ext;
+                file_put_contents($storageDir . '/' . $fileName, $decoded);
+                return '/storage/products/' . $fileName;
+            }
+        }
+
+        if (str_starts_with($imageUrl, '/storage/')) {
+            return $imageUrl;
+        }
+
+        return $imageUrl;
+    }
+
+    /**
+     * Create a new product in the global catalog and link to all active supermarket branches.
+     */
+    public function storeProduct(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'image_url' => 'nullable|string',
+            'category_id' => 'required',
+            'base_price' => 'nullable|numeric|min:0.01',
+            'price' => 'nullable|numeric|min:0.01',
+            'unit' => 'nullable|string|max:50',
+            'unit_of_measure' => 'nullable|string|max:50',
+            'pricing_type' => 'nullable|in:fixed_unit,weighted',
+            'barcode' => 'nullable|string|max:100',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        // Resilient category resolution (ID or Name or Slug)
+        $catInput = $validated['category_id'] ?? null;
+        if (is_numeric($catInput)) {
+            $cat = Category::find($catInput);
+            if (!$cat) {
+                $cat = Category::first();
+            }
+            $catId = $cat ? $cat->id : 1;
+        } else {
+            $catName = trim((string)$catInput);
+            if (!empty($catName)) {
+                $cat = Category::where('name', $catName)->orWhere('slug', Str::slug($catName))->first();
+                if (!$cat) {
+                    $slug = Str::slug($catName);
+                    $originalSlug = $slug;
+                    $counter = 1;
+                    while (Category::where('slug', $slug)->exists()) {
+                        $slug = $originalSlug . '-' . $counter++;
+                    }
+                    $cat = Category::create([
+                        'name' => $catName,
+                        'slug' => $slug,
+                        'icon_url' => '🛒',
+                        'is_active' => true,
+                    ]);
+                }
+                $catId = $cat->id;
+            } else {
+                $cat = Category::first();
+                $catId = $cat ? $cat->id : 1;
+            }
+        }
+
+        $imageUrl = $this->processImageUrl($validated['image_url'] ?? null);
+        $slug = Str::slug($validated['name']) . '-' . strtolower(Str::random(4));
+        do {
+            $sku = 'PRD-' . strtoupper(Str::random(6));
+        } while (Product::where('sku', $sku)->exists());
+        $unitOfMeasure = $validated['unit_of_measure'] ?? $validated['unit'] ?? 'piece';
+        $pricingType = $validated['pricing_type'] ?? 'fixed_unit';
+        $price = !empty($validated['base_price']) ? floatval($validated['base_price']) : (!empty($validated['price']) ? floatval($validated['price']) : 50.00);
+        $barcode = !empty($validated['barcode']) ? trim($validated['barcode']) : null;
+
+        $product = DB::transaction(function () use ($validated, $catId, $imageUrl, $slug, $sku, $unitOfMeasure, $pricingType, $price, $barcode) {
+            $prod = Product::create([
+                'category_id' => $catId,
+                'name' => $validated['name'],
+                'slug' => $slug,
+                'sku' => $sku,
+                'barcode' => $barcode,
+                'description' => $validated['description'] ?? null,
+                'pricing_type' => $pricingType,
+                'unit_of_measure' => $unitOfMeasure,
+                'image_url' => $imageUrl,
+                'is_active' => $validated['is_active'] ?? true,
+            ]);
+
+            // Link to ALL active branches
+            $branches = Branch::all();
+            if ($branches->isEmpty()) {
+                $branches = collect([(object)['id' => 1]]);
+            }
+            foreach ($branches as $b) {
+                BranchProduct::updateOrCreate(
+                    [
+                        'branch_id' => $b->id,
+                        'product_id' => $prod->id,
+                    ],
+                    [
+                        'price' => $price,
+                        'discount_price' => null,
+                        'stock_quantity' => 50,
+                        'is_in_stock' => $validated['is_active'] ?? true,
+                    ]
+                );
+            }
+
+            return $prod;
+        });
+
+        return response()->json([
+            'message' => 'Product created successfully and published to all branches.',
+            'product' => $product->load('category'),
+        ], 201);
+    }
+
+    /**
+     * Update an existing product in the global catalog.
+     */
+    public function updateProduct(Request $request, int $id): JsonResponse
+    {
+        $product = Product::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'sometimes|required|string|max:255',
+            'description' => 'nullable|string',
+            'image_url' => 'nullable|string',
+            'category_id' => 'sometimes|required|exists:categories,id',
+            'base_price' => 'sometimes|required|numeric|min:0.01',
+            'unit' => 'nullable|string|max:50',
+            'unit_of_measure' => 'nullable|string|max:50',
+            'pricing_type' => 'nullable|in:fixed_unit,weighted',
+            'barcode' => [
+                'nullable',
+                'string',
+                'max:100',
+                Rule::unique('products', 'barcode')->ignore($id),
+            ],
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        if (array_key_exists('image_url', $validated)) {
+            $validated['image_url'] = $this->processImageUrl($validated['image_url']);
+        }
+
+        if (!empty($validated['unit']) && empty($validated['unit_of_measure'])) {
+            $validated['unit_of_measure'] = $validated['unit'];
+        }
+
+        DB::transaction(function () use ($validated, $product) {
+            $basePrice = $validated['base_price'] ?? null;
+            $isActive = $validated['is_active'] ?? null;
+            unset($validated['base_price'], $validated['unit']);
+
+            $product->update($validated);
+
+            $bpUpdates = [];
+            if ($basePrice !== null) {
+                $bpUpdates['price'] = $basePrice;
+            }
+            if ($isActive !== null) {
+                $bpUpdates['is_in_stock'] = $isActive;
+            }
+            if (!empty($bpUpdates)) {
+                BranchProduct::where('product_id', $product->id)->update($bpUpdates);
+            }
+        });
+
+        return response()->json([
+            'message' => 'Product updated successfully.',
+            'product' => $product->fresh('category'),
+        ]);
+    }
+
+    /**
+     * Delete a product from the global catalog.
+     */
+    public function deleteProduct(int $id): JsonResponse
+    {
+        $product = Product::findOrFail($id);
+        $name = $product->name;
+        
+        DB::transaction(function () use ($product) {
+            BranchProduct::where('product_id', $product->id)->delete();
+            $product->delete();
+        });
+
+        return response()->json([
+            'message' => "Product '{$name}' has been successfully deleted.",
+        ]);
+    }
+
+    // ==================== Category Management ====================
+
+    /**
+     * List all categories.
+     */
+    public function getCategories(): JsonResponse
+    {
+        $categories = DB::table('categories')
+            ->leftJoin('products', 'categories.id', '=', 'products.category_id')
+            ->select(
+                'categories.id',
+                'categories.name',
+                'categories.slug',
+                'categories.description',
+                'categories.icon_url',
+                'categories.is_active',
+                'categories.created_at',
+                'categories.updated_at',
+                DB::raw('COUNT(products.id) as products_count')
+            )
+            ->groupBy(
+                'categories.id',
+                'categories.name',
+                'categories.slug',
+                'categories.description',
+                'categories.icon_url',
+                'categories.is_active',
+                'categories.created_at',
+                'categories.updated_at'
+            )
+            ->orderBy('categories.name')
+            ->get()
+            ->map(function ($cat) {
+                $cat->icon = $cat->icon_url;
+                return $cat;
+            });
+
+        return response()->json([
+            'categories' => $categories,
+        ]);
+    }
+
+    /**
+     * Create a new category.
+     */
+    public function storeCategory(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:100|unique:categories,name',
+            'description' => 'nullable|string',
+            'icon_url' => 'nullable|string|max:255',
+            'icon' => 'nullable|string|max:255',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $icon = !empty($validated['icon_url']) ? $validated['icon_url'] : (!empty($validated['icon']) ? $validated['icon'] : '🛒');
+
+        $slug = Str::slug($validated['name']);
+        $originalSlug = $slug;
+        $counter = 1;
+        while (DB::table('categories')->where('slug', $slug)->exists()) {
+            $slug = $originalSlug . '-' . $counter++;
+        }
+
+        $categoryId = DB::table('categories')->insertGetId([
+            'name' => $validated['name'],
+            'slug' => $slug,
+            'description' => $validated['description'] ?? null,
+            'icon_url' => $icon,
+            'is_active' => $validated['is_active'] ?? true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $category = DB::table('categories')->where('id', $categoryId)->first();
+        if ($category) {
+            $category->icon = $category->icon_url;
+        }
+
+        return response()->json([
+            'message' => 'Category created successfully.',
+            'category' => $category,
+        ], 201);
+    }
+
+    /**
+     * Update an existing category.
+     */
+    public function updateCategory(Request $request, int $id): JsonResponse
+    {
+        $exists = DB::table('categories')->where('id', $id)->exists();
+        if (!$exists) {
+            return response()->json(['message' => 'Category not found.'], 404);
+        }
+
+        $validated = $request->validate([
+            'name' => [
+                'sometimes',
+                'required',
+                'string',
+                'max:100',
+                Rule::unique('categories', 'name')->ignore($id),
+            ],
+            'description' => 'nullable|string',
+            'icon_url' => 'nullable|string|max:255',
+            'icon' => 'nullable|string|max:255',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $updateData = [];
+        if (isset($validated['name'])) {
+            $updateData['name'] = $validated['name'];
+        }
+        if (array_key_exists('description', $validated)) {
+            $updateData['description'] = $validated['description'];
+        }
+        if (isset($validated['icon_url']) || isset($validated['icon'])) {
+            $updateData['icon_url'] = !empty($validated['icon_url']) ? $validated['icon_url'] : $validated['icon'];
+        }
+        if (isset($validated['is_active'])) {
+            $updateData['is_active'] = $validated['is_active'];
+        }
+        $updateData['updated_at'] = now();
+
+        DB::table('categories')->where('id', $id)->update($updateData);
+
+        $category = DB::table('categories')->where('id', $id)->first();
+        if ($category) {
+            $category->icon = $category->icon_url;
+        }
+
+        return response()->json([
+            'message' => 'Category updated successfully.',
+            'category' => $category,
+        ]);
+    }
+
+    /**
+     * Delete a category.
+     */
+    public function deleteCategory(int $id): JsonResponse
+    {
+        $category = DB::table('categories')->where('id', $id)->first();
+
+        if (!$category) {
+            return response()->json(['message' => 'Category not found.'], 404);
+        }
+
+        // Check if category has products
+        $hasProducts = DB::table('products')->where('category_id', $id)->exists();
+
+        if ($hasProducts) {
+            return response()->json([
+                'message' => 'Cannot delete category. It contains one or more products.',
+            ], 409);
+        }
+
+        DB::table('categories')->where('id', $id)->delete();
+
+        return response()->json([
+            'message' => "Category '{$category->name}' has been successfully deleted.",
         ]);
     }
 }

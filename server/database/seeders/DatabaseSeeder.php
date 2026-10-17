@@ -27,15 +27,28 @@ class DatabaseSeeder extends Seeder
 
         $seedUser = function ($criteria, $data) {
             $query = User::query();
+            $hasCondition = false;
+            
             if (!empty($criteria['email'])) {
                 $query->where('email', $criteria['email']);
+                $hasCondition = true;
             }
             if (!empty($criteria['phone_number'])) {
-                $query->orWhere('phone_number', $criteria['phone_number']);
+                if ($hasCondition) {
+                    $query->orWhere('phone_number', $criteria['phone_number']);
+                } else {
+                    $query->where('phone_number', $criteria['phone_number']);
+                    $hasCondition = true;
+                }
             }
             if (!empty($criteria['name'])) {
-                $query->orWhere('name', $criteria['name']);
+                if ($hasCondition) {
+                    $query->orWhere('name', $criteria['name']);
+                } else {
+                    $query->where('name', $criteria['name']);
+                }
             }
+            
             $user = $query->first();
             if ($user) {
                 $user->update($data);
@@ -48,8 +61,9 @@ class DatabaseSeeder extends Seeder
         $admin = $seedUser(
             ['name' => 'admin', 'email' => 'admin@grocery.test'],
             [
-                'first_name' => 'General',
-                'last_name' => 'Manager',
+                'name' => 'admin',
+                'first_name' => 'Admin',
+                'last_name' => 'User',
                 'email' => 'admin@grocery.test',
                 'phone_number' => null,
                 'password' => Hash::make('admin123'),
@@ -61,13 +75,14 @@ class DatabaseSeeder extends Seeder
         );
 
         $customerUser1 = $seedUser(
-            ['phone_number' => '0969644384'],
+            ['name' => 'user'],
             [
-                'name' => 'User1',
-                'first_name' => 'User',
-                'last_name' => '1',
-                'email' => 'user1@grocery.test',
-                'password' => Hash::make('password123'),
+                'name' => 'user',
+                'first_name' => 'Customer',
+                'last_name' => 'User',
+                'email' => 'user@grocery.test',
+                'phone_number' => '0969644384',
+                'password' => Hash::make('user123'),
                 'role' => 'customer',
                 'approval_status' => 'approved',
                 'phone_verified_at' => now(),
@@ -77,14 +92,14 @@ class DatabaseSeeder extends Seeder
         $customer = $customerUser1;
 
         $manager = $seedUser(
-            ['email' => 'manager@grocery.test', 'phone_number' => '0911000002'],
+            ['name' => 'manager'],
             [
-                'name' => 'Sara Manager',
-                'first_name' => 'Sara',
+                'name' => 'manager',
+                'first_name' => 'Store',
                 'last_name' => 'Manager',
                 'email' => 'manager@grocery.test',
                 'phone_number' => '0911000002',
-                'password' => $defaultPassword,
+                'password' => Hash::make('manager123'),
                 'role' => 'store_manager',
                 'approval_status' => 'approved',
                 'phone_verified_at' => now(),
@@ -257,346 +272,8 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        // 5. Create Grocery Products (Weighted Produce vs Fixed-Unit packaged goods)
-        $productsData = [
-            // Fruits & Veg (Weighted)
-            [
-                'cat' => 'fruits-vegetables',
-                'name' => 'Fresh Cavendish Bananas',
-                'slug' => 'fresh-cavendish-bananas',
-                'sku' => 'FRT-BAN-001',
-                'pricing_type' => 'weighted',
-                'unit_of_measure' => 'kg',
-                'step_weight_grams' => 500,
-                'price' => 120.00,
-                'stock' => 50.00,
-                'is_perishable' => true,
-                'image_url' => 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=600&q=80',
-            ],
-            [
-                'cat' => 'fruits-vegetables',
-                'name' => 'Crisp Royal Gala Apples',
-                'slug' => 'crisp-royal-gala-apples',
-                'sku' => 'FRT-APP-002',
-                'pricing_type' => 'weighted',
-                'unit_of_measure' => 'kg',
-                'step_weight_grams' => 500,
-                'price' => 240.00,
-                'stock' => 35.00,
-                'is_perishable' => true,
-                'image_url' => 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&w=600&q=80',
-            ],
-            [
-                'cat' => 'fruits-vegetables',
-                'name' => 'Organic Fresh Baby Spinach (250g Pack)',
-                'slug' => 'organic-baby-spinach-pack',
-                'sku' => 'VEG-SPN-003',
-                'pricing_type' => 'fixed_unit',
-                'unit_of_measure' => 'pack',
-                'step_weight_grams' => null,
-                'price' => 95.00,
-                'stock' => 20.00,
-                'is_perishable' => true,
-                'image_url' => 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=600&q=80',
-            ],
-
-            // Dairy & Eggs (Fixed Units)
-            [
-                'cat' => 'dairy-eggs',
-                'name' => 'Fresh Whole Pasteurized Milk (1 Liter)',
-                'slug' => 'fresh-whole-milk-1l',
-                'sku' => 'DAI-MLK-001',
-                'pricing_type' => 'fixed_unit',
-                'unit_of_measure' => 'bottle',
-                'step_weight_grams' => null,
-                'price' => 85.00,
-                'stock' => 60.00,
-                'is_perishable' => true,
-                'image_url' => 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=600&q=80',
-            ],
-            [
-                'cat' => 'dairy-eggs',
-                'name' => 'Farm Fresh Brown Eggs (Tray of 15)',
-                'slug' => 'farm-fresh-brown-eggs-15',
-                'sku' => 'DAI-EGG-002',
-                'pricing_type' => 'fixed_unit',
-                'unit_of_measure' => 'tray',
-                'step_weight_grams' => null,
-                'price' => 270.00,
-                'stock' => 25.00,
-                'is_perishable' => true,
-                'image_url' => 'https://images.unsplash.com/photo-1516467508483-a7212febe31a?auto=format&fit=crop&w=600&q=80',
-            ],
-            [
-                'cat' => 'dairy-eggs',
-                'name' => 'Artisan Aged Cheddar Cheese Block',
-                'slug' => 'artisan-aged-cheddar-cheese',
-                'sku' => 'DAI-CHS-003',
-                'pricing_type' => 'weighted',
-                'unit_of_measure' => 'kg',
-                'step_weight_grams' => 200,
-                'price' => 850.00,
-                'stock' => 15.00,
-                'is_perishable' => true,
-                'image_url' => 'https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?auto=format&fit=crop&w=600&q=80',
-            ],
-
-            // Meat (Weighted)
-            [
-                'cat' => 'meat-poultry',
-                'name' => 'Boneless Skinless Chicken Breast',
-                'slug' => 'boneless-chicken-breast',
-                'sku' => 'MET-CHK-001',
-                'pricing_type' => 'weighted',
-                'unit_of_measure' => 'kg',
-                'step_weight_grams' => 500,
-                'price' => 480.00,
-                'stock' => 30.00,
-                'is_perishable' => true,
-                'image_url' => 'https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&w=600&q=80',
-            ],
-
-            // Pantry (Fixed Unit)
-            [
-                'cat' => 'pantry-beverages',
-                'name' => 'Extra Virgin Olive Oil (Cold Pressed, 1L)',
-                'slug' => 'extra-virgin-olive-oil-1l',
-                'sku' => 'PAN-OIL-001',
-                'pricing_type' => 'fixed_unit',
-                'unit_of_measure' => 'bottle',
-                'step_weight_grams' => null,
-                'price' => 750.00,
-                'stock' => 40.00,
-                'is_perishable' => false,
-                'image_url' => 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=600&q=80',
-            ],
-            [
-                'cat' => 'pantry-beverages',
-                'name' => 'Roasted Ethiopian Yirgacheffe Coffee Beans (500g)',
-                'slug' => 'ethiopian-yirgacheffe-coffee-500g',
-                'sku' => 'PAN-COF-002',
-                'pricing_type' => 'fixed_unit',
-                'unit_of_measure' => 'bag',
-                'step_weight_grams' => null,
-                'price' => 380.00,
-                'stock' => 50.00,
-                'is_perishable' => false,
-                'image_url' => 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80',
-            ],
-        ];
-
-        foreach ($productsData as $p) {
-            $product = Product::firstOrCreate(
-                ['sku' => $p['sku']],
-                [
-                    'category_id' => $categories[$p['cat']]->id,
-                    'name' => $p['name'],
-                    'slug' => $p['slug'],
-                    'pricing_type' => $p['pricing_type'],
-                    'unit_of_measure' => $p['unit_of_measure'],
-                    'step_weight_grams' => $p['step_weight_grams'],
-                    'image_url' => $p['image_url'],
-                    'is_perishable' => $p['is_perishable'],
-                    'is_active' => true,
-                ]
-            );
-
-            // Link to branch inventory (all branches)
-            foreach ([$branch, $branch2, $branch3] as $b) {
-                BranchProduct::updateOrCreate(
-                    ['branch_id' => $b->id, 'product_id' => $product->id],
-                    [
-                        'price' => $p['price'],
-                        'discount_price' => null,
-                        'stock_quantity' => $p['stock'],
-                        'is_in_stock' => true,
-                    ]
-                );
-            }
-        }
-
-        // 6. Create Sample Orders across stages:
-        // Order 1: Out for Delivery (Live Tracking Demo)
-        $banana = Product::where('sku', 'FRT-BAN-001')->first();
-        $milk = Product::where('sku', 'DAI-MLK-001')->first();
-        $coffee = Product::where('sku', 'PAN-COF-002')->first();
-        $apple = Product::where('sku', 'FRT-APP-002')->first();
-
-        $subtotal = (120.00 * 1.5) + (85.00 * 2) + 380.00;
-        $deliveryFee = 50.00;
-        $total = $subtotal + $deliveryFee;
-
-        $order = Order::firstOrCreate(
-            ['order_number' => 'ORD-20261007-DEMO1'],
-            [
-                'customer_id' => $customer->id,
-                'branch_id' => $branch->id,
-                'address_id' => $customerAddress->id,
-                'delivery_address_snapshot' => [
-                    'label' => $customerAddress->label,
-                    'latitude' => $customerAddress->latitude,
-                    'longitude' => $customerAddress->longitude,
-                    'city' => $customerAddress->city,
-                    'district_area' => $customerAddress->district_area,
-                    'street_name' => $customerAddress->street_name,
-                    'building_name_or_no' => $customerAddress->building_name_or_no,
-                    'house_villa_no' => $customerAddress->house_villa_no,
-                    'floor_number' => $customerAddress->floor_number,
-                    'apartment_unit' => $customerAddress->apartment_unit,
-                    'gate_code' => $customerAddress->gate_code,
-                    'nearby_landmark' => $customerAddress->nearby_landmark,
-                    'delivery_instructions' => $customerAddress->delivery_instructions,
-                    'customer_phone' => $customer->phone_number,
-                    'customer_name' => $customer->name,
-                ],
-                'status' => 'out_for_delivery',
-                'delivery_type' => 'express_immediate',
-                'subtotal' => $subtotal,
-                'delivery_fee' => $deliveryFee,
-                'estimated_total' => $total,
-                'final_total' => $total,
-                'payment_method' => 'cash_on_delivery',
-                'payment_status' => 'pending',
-                'delivery_otp' => '482910',
-                'picker_id' => $picker->id,
-                'special_notes' => 'Please deliver as quickly as possible. Thanks!',
-            ]
-        );
-
-        OrderItem::firstOrCreate(
-            ['order_id' => $order->id, 'product_id' => $banana->id],
-            [
-                'requested_quantity' => 1.50,
-                'picked_quantity' => 1.52,
-                'unit_price' => 120.00,
-                'final_item_total' => 182.40,
-                'substitution_preference' => 'best_match',
-            ]
-        );
-
-        OrderItem::firstOrCreate(
-            ['order_id' => $order->id, 'product_id' => $milk->id],
-            [
-                'requested_quantity' => 2.00,
-                'picked_quantity' => 2.00,
-                'unit_price' => 85.00,
-                'final_item_total' => 170.00,
-                'substitution_preference' => 'contact_customer',
-            ]
-        );
-
-        OrderItem::firstOrCreate(
-            ['order_id' => $order->id, 'product_id' => $coffee->id],
-            [
-                'requested_quantity' => 1.00,
-                'picked_quantity' => 1.00,
-                'unit_price' => 380.00,
-                'final_item_total' => 380.00,
-                'substitution_preference' => 'do_not_substitute',
-            ]
-        );
-
-        // Active Driver Trip for Live Tracking Demo
-        $trip = DriverTrip::firstOrCreate(
-            ['order_id' => $order->id],
-            [
-                'driver_id' => $driver->id,
-                'status' => 'delivering',
-                'started_at' => now()->subMinutes(8),
-                'distance_km' => 3.20,
-                'duration_minutes' => 12,
-            ]
-        );
-
-        DriverLocation::firstOrCreate(
-            ['trip_id' => $trip->id, 'created_at' => now()->subMinutes(1)],
-            [
-                'latitude' => 9.00680000,
-                'longitude' => 38.77700000,
-                'heading' => 315.0,
-                'speed' => 28.5,
-            ]
-        );
-
-        // Order 2: Packed & Ready for Deliverer Pickup
-        $order2 = Order::firstOrCreate(
-            ['order_number' => 'ORD-20261007-READY1'],
-            [
-                'customer_id' => $customer->id,
-                'branch_id' => $branch->id,
-                'address_id' => $customerAddress->id,
-                'delivery_address_snapshot' => [
-                    'label' => 'home',
-                    'latitude' => 9.01250000,
-                    'longitude' => 38.76980000,
-                    'city' => 'Addis Ababa',
-                    'district_area' => 'Kazanchis',
-                    'street_name' => 'Menelik II Ave',
-                    'building_name_or_no' => 'Sunrise Luxury Apt',
-                    'house_villa_no' => 'B-42',
-                    'floor_number' => '4th Floor',
-                    'apartment_unit' => 'Apt 402',
-                    'gate_code' => '#1984',
-                    'customer_phone' => $customer->phone_number,
-                    'customer_name' => $customer->name,
-                ],
-                'status' => 'packed',
-                'delivery_type' => 'express_immediate',
-                'subtotal' => 360.00,
-                'delivery_fee' => 50.00,
-                'estimated_total' => 410.00,
-                'final_total' => 410.00,
-                'payment_method' => 'cash_on_delivery',
-                'payment_status' => 'pending',
-                'delivery_otp' => '629143',
-                'picker_id' => $picker->id,
-                'special_notes' => 'Handle organic apples with care.',
-            ]
-        );
-
-        if ($apple) {
-            OrderItem::firstOrCreate(
-                ['order_id' => $order2->id, 'product_id' => $apple->id],
-                [
-                    'requested_quantity' => 1.50,
-                    'picked_quantity' => 1.50,
-                    'unit_price' => 240.00,
-                    'final_item_total' => 360.00,
-                    'substitution_preference' => 'best_match',
-                ]
-            );
-        }
-
-        // Order 3: Newly Placed (Waiting for Supermarket Manager to pack)
-        $order3 = Order::firstOrCreate(
-            ['order_number' => 'ORD-20261007-NEW01'],
-            [
-                'customer_id' => $customer->id,
-                'branch_id' => $branch2->id,
-                'address_id' => $customerAddress->id,
-                'delivery_address_snapshot' => [
-                    'label' => 'home',
-                    'latitude' => 9.01250000,
-                    'longitude' => 38.76980000,
-                    'city' => 'Addis Ababa',
-                    'district_area' => 'Kazanchis',
-                    'street_name' => 'Menelik II Ave',
-                    'building_name_or_no' => 'Sunrise Luxury Apt',
-                    'house_villa_no' => 'B-42',
-                    'customer_phone' => $customer->phone_number,
-                    'customer_name' => $customer->name,
-                ],
-                'status' => 'placed',
-                'delivery_type' => 'express_immediate',
-                'subtotal' => 205.00,
-                'delivery_fee' => 50.00,
-                'estimated_total' => 255.00,
-                'final_total' => 255.00,
-                'payment_method' => 'cash_on_delivery',
-                'payment_status' => 'pending',
-                'delivery_otp' => '831092',
-                'special_notes' => 'Please bring before 6 PM.',
-            ]
-        );
+        // 5. Products and orders are created dynamically by Store Managers via the Manager portal.
+        // Hardcoded products are omitted so only genuine manager-created inventory appears for customers.
     }
 }
+

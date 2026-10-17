@@ -28,6 +28,9 @@ import DelivererComingSoonView from '../views/driver/DelivererComingSoonView.vue
 // Admin Views
 import GeneralManagerView from '../views/admin/GeneralManagerView.vue';
 import AdminLoginView from '../views/admin/AdminLoginView.vue';
+import AdminLayout from '../views/admin/AdminLayout.vue';
+import AdminProductsView from '../views/admin/AdminProductsView.vue';
+import AdminCategoriesView from '../views/admin/AdminCategoriesView.vue';
 
 const routes = [
   // PUBLIC ROUTES (No Auth Required) - Use PublicLayout
@@ -41,6 +44,11 @@ const routes = [
         component: HomeView,
       },
       {
+        path: 'products',
+        name: 'products',
+        component: HomeView,
+      },
+      {
         path: 'cart',
         name: 'cart',
         component: CartView,
@@ -51,6 +59,15 @@ const routes = [
         component: TrackingView,
       },
     ],
+  },
+
+  {
+    path: '/customer',
+    redirect: '/products',
+  },
+  {
+    path: '/customer/products',
+    redirect: '/products',
   },
 
   // AUTH ROUTES (Standalone, No Layout)
@@ -153,17 +170,33 @@ const routes = [
   },
   {
     path: '/admin',
-    redirect: '/admin/dashboard',
-  },
-  {
-    path: '/admin/dashboard',
-    name: 'admin-dashboard',
-    component: GeneralManagerView,
+    component: AdminLayout,
     meta: { requiresAuth: true, role: 'admin' },
+    children: [
+      {
+        path: '',
+        redirect: '/admin/products',
+      },
+      {
+        path: 'products',
+        name: 'admin-products',
+        component: AdminProductsView,
+      },
+      {
+        path: 'categories',
+        name: 'admin-categories',
+        component: AdminCategoriesView,
+      },
+      {
+        path: 'operations',
+        name: 'admin-operations',
+        component: GeneralManagerView,
+      },
+    ],
   },
   {
     path: '/general-manager',
-    redirect: '/admin/dashboard',
+    redirect: '/admin/operations',
   },
 ];
 
@@ -197,7 +230,7 @@ router.beforeEach((to, from, next) => {
       } else if (authStore.userRole === 'driver') {
         next('/driver');
       } else if (authStore.userRole === 'admin') {
-        next('/admin/dashboard');
+        next('/admin/products');
       } else {
         next('/');
       }

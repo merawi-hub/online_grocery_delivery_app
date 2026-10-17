@@ -1,5 +1,4 @@
 <script setup>
-import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
 
@@ -16,17 +15,9 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 
-const isAccountModalOpen = ref(false);
-
 function handleManagerLogout() {
   authStore.logout();
   router.push('/login');
-}
-
-async function switchToAccount(phone, pass) {
-  await authStore.login(phone, pass);
-  isAccountModalOpen.value = false;
-  router.push('/admin123/dashboard');
 }
 </script>
 
@@ -130,28 +121,16 @@ async function switchToAccount(phone, pass) {
         <span v-if="!isMinimized" class="nav-label">Store Settings</span>
         <span v-if="isMinimized" class="nav-tooltip">Store Settings</span>
       </router-link>
-
-      <router-link
-        to="/general-manager"
-        class="nav-link"
-        :class="{ active: route.path === '/general-manager' }"
-      >
-        <span class="nav-icon">👑</span>
-        <span v-if="!isMinimized" class="nav-label">4th Manager Console</span>
-        <span v-if="isMinimized" class="nav-tooltip">General Operations Manager</span>
-      </router-link>
     </nav>
 
     <!-- Manager Profile Footer -->
     <div class="sidebar-footer">
       <div v-if="!isMinimized" class="profile-box">
         <div class="profile-meta">
-          <span class="profile-name">{{ authStore.userName || 'Sara Manager' }}</span>
+          <span class="profile-name">{{ authStore.userName || 'Store Manager' }}</span>
           <span class="profile-role">{{ authStore.userRole?.replace('_', ' ') || 'Store Manager' }}</span>
         </div>
         <div class="footer-actions">
-          <button class="footer-btn" @click="isAccountModalOpen = true" title="Switch Account">Switch</button>
-          <span class="divider">•</span>
           <button class="footer-btn logout-text" @click="handleManagerLogout" title="Sign Out">Log Out</button>
         </div>
       </div>
@@ -159,73 +138,12 @@ async function switchToAccount(phone, pass) {
       <div v-else class="profile-box-mini">
         <button
           class="mini-avatar-btn"
-          @click="isAccountModalOpen = true"
-          :title="`${authStore.userName || 'Sara Manager'} • Click to switch profile`"
+          @click="handleManagerLogout"
+          :title="`${authStore.userName || 'Store Manager'} • Click to log out`"
         >
-          <span class="avatar-initials">SM</span>
+          <span class="avatar-initials">{{ (authStore.userName || 'SM').charAt(0).toUpperCase() }}</span>
           <span class="mini-status-dot"></span>
         </button>
-      </div>
-    </div>
-
-    <!-- Account Switcher Modal (accessible in both expanded & minimized modes) -->
-    <div v-if="isAccountModalOpen" class="modal-overlay" @click.self="isAccountModalOpen = false">
-      <div class="modal-sheet account-modal">
-        <div class="modal-header">
-          <div>
-            <h3>Switch Account</h3>
-            <p>Select another manager account or switch profiles.</p>
-          </div>
-          <button class="close-btn" @click="isAccountModalOpen = false">✕</button>
-        </div>
-
-        <div class="modal-body">
-          <div class="account-item current-account">
-            <div class="account-details">
-              <strong>{{ authStore.userName || 'Sara Manager' }}</strong>
-              <small>{{ authStore.userPhone || '+251911000002' }} • Active Now</small>
-            </div>
-            <span class="badge badge-green">Current</span>
-          </div>
-
-          <div class="accounts-label">Select Profile to Switch:</div>
-
-          <button
-            class="account-item switchable"
-            :class="{ active: authStore.userPhone === '+251911000002' }"
-            @click="switchToAccount('+251911000002', 'password123')"
-          >
-            <div class="account-details">
-              <strong>Sara Manager</strong>
-              <small>+251911000002 • Bole Flagship Branch</small>
-            </div>
-            <span class="switch-txt">Switch →</span>
-          </button>
-
-          <button
-            class="account-item switchable"
-            :class="{ active: authStore.userPhone === '+251911000001' }"
-            @click="switchToAccount('+251911000001', 'password123')"
-          >
-            <div class="account-details">
-              <strong>Abebe Admin</strong>
-              <small>+251911000001 • Super Administrator</small>
-            </div>
-            <span class="switch-txt">Switch →</span>
-          </button>
-
-          <div class="modal-nav-links">
-            <router-link to="/admin123/login" class="btn btn-outline btn-block" @click="isAccountModalOpen = false">
-              Log In With Different Phone
-            </router-link>
-            <router-link to="/admin123/signup" class="btn btn-outline btn-block" @click="isAccountModalOpen = false">
-              Register New Manager
-            </router-link>
-            <button class="btn btn-danger btn-block" @click="handleManagerLogout">
-              Log Out of System
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   </aside>
@@ -729,159 +647,6 @@ async function switchToAccount(phone, pass) {
   background: #16a34a;
   border: 2px solid #ffffff;
   border-radius: 50%;
-}
-
-/* Modal */
-.account-modal {
-  max-width: 440px;
-}
-
-.modal-header {
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid #e5e7eb;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.modal-header h3 {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #111827;
-}
-
-.modal-header p {
-  font-size: 0.75rem;
-  color: #6b7280;
-  margin-top: 0.15rem;
-}
-
-.close-btn {
-  font-size: 1rem;
-  color: #9ca3af;
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
-  border: 1px solid transparent;
-  background: transparent;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.close-btn:hover {
-  background: #e0f2fe;
-  color: #0369a1;
-  border-color: #bae6fd;
-}
-
-.close-btn:active {
-  background: #bae6fd;
-  color: #0c4a6e;
-}
-
-.modal-body {
-  padding: 1rem 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.account-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.65rem 0.85rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background: #ffffff;
-  text-align: left;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  width: 100%;
-}
-
-.current-account {
-  background: #f9fafb;
-  cursor: default;
-}
-
-.switchable:hover {
-  border-color: #7dd3fc;
-  background: #e0f2fe;
-}
-
-.switchable:hover .account-details strong {
-  color: #0c4a6e;
-}
-
-.switchable:hover .account-details small {
-  color: #0369a1;
-}
-
-.switchable:hover .switch-txt {
-  color: #0284c7;
-}
-
-.switchable:active {
-  background: #bae6fd;
-}
-
-.account-details strong {
-  display: block;
-  font-size: 0.825rem;
-  color: #111827;
-  transition: color 0.15s ease;
-}
-
-.account-details small {
-  font-size: 0.72rem;
-  color: #6b7280;
-  transition: color 0.15s ease;
-}
-
-.switch-txt {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #111827;
-  transition: color 0.15s ease;
-}
-
-.accounts-label {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: #6b7280;
-  text-transform: uppercase;
-  margin-top: 0.25rem;
-}
-
-.modal-nav-links {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  margin-top: 0.5rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid #e5e7eb;
-}
-
-.btn-block {
-  width: 100%;
-  justify-content: center;
-}
-
-.modal-nav-links .btn:hover {
-  background: #e0f2fe;
-  color: #0369a1;
-  border-color: #bae6fd;
-}
-
-.modal-nav-links .btn:active {
-  background: #bae6fd;
-  color: #0c4a6e;
-}
-
-.modal-nav-links .btn-danger:hover {
-  background: #e0f2fe;
-  color: #b91c1c;
-  border-color: #bae6fd;
 }
 
 .truncate {

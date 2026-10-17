@@ -1,16 +1,23 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
+import { useRoute } from 'vue-router';
 import api from '../services/api';
 import ProductCard from '../components/ProductCard.vue';
 import { useCartStore } from '../stores/cart';
+import { useAuthStore } from '../stores/auth';
 
+const route = useRoute();
 const cartStore = useCartStore();
+const authStore = useAuthStore();
 
 const categories = ref([]);
 const products = ref([]);
 const selectedCategory = ref('');
 const searchQuery = ref('');
+const filterMode = ref('all'); // 'all' or 'new_arrivals'
 const loading = ref(true);
+const isRefreshing = ref(false);
+let catalogChannel = null;
 
 async function loadCategories() {
   try {
@@ -21,10 +28,16 @@ async function loadCategories() {
   }
 }
 
-async function loadProducts() {
-  loading.value = true;
+async function loadProducts(showSpinner = false) {
+  if (showSpinner || products.value.length === 0) {
+    loading.value = true;
+  }
+  isRefreshing.value = true;
   try {
     const params = {};
+    if (authStore.selectedBranchId) {
+      params.branch_id = authStore.selectedBranchId;
+    }
     if (selectedCategory.value) {
       params.category = selectedCategory.value;
     }
@@ -37,6 +50,7 @@ async function loadProducts() {
     console.error('Failed to load products', err);
   } finally {
     loading.value = false;
+    setTimeout(() => { isRefreshing.value = false; }, 300);
   }
 }
 
@@ -44,6 +58,23 @@ function handleCategorySelect(slug) {
   selectedCategory.value = selectedCategory.value === slug ? '' : slug;
   loadProducts();
 }
+
+const activeCategoryName = computed(() => {
+  if (!selectedCategory.value) return 'All Products';
+  const found = categories.value.find(c => c.slug === selectedCategory.value);
+  return found ? found.name : selectedCategory.value;
+});
+
+const newProductsCount = computed(() => {
+  return products.value.filter(p => p.is_recent).length;
+});
+
+const displayedProducts = computed(() => {
+  if (filterMode.value === 'new_arrivals') {
+    return products.value.filter(p => p.is_recent);
+  }
+  return products.value;
+});
 
 let searchDebounce = null;
 watch(searchQuery, () => {
@@ -53,9 +84,78 @@ watch(searchQuery, () => {
   }, 300);
 });
 
+// Watch route query changes (e.g. from header search or links)
+watch(() => route.query, (newQuery) => {
+  if (newQuery.search !== undefined) {
+    searchQuery.value = newQuery.search;
+  }
+  if (newQuery.category !== undefined) {
+    selectedCategory.value = newQuery.category;
+  }
+  if (newQuery.new === 'true') {
+    filterMode.value = 'new_arrivals';
+  }
+  loadProducts();
+}, { immediate: true });
+
+function onWindowFocus() {
+  loadProducts(false);
+  loadCategories();
+}
+
+function handleStorageUpdate(e) {
+  if (e.key === 'grocery_catalog_last_updated') {
+    loadCategories();
+    loadProducts(false);
+  }
+}
+
+function handleVisibilityChange() {
+  if (!document.hidden) {
+    loadCategories();
+    loadProducts(false);
+  }
+}
+
+let pollTimer = null;
+
 onMounted(() => {
   loadCategories();
-  loadProducts();
+  loadProducts(true);
+
+  // 1. Real-time BroadcastChannel across browser tabs/windows
+  try {
+    catalogChannel = new BroadcastChannel('grocery_catalog_updates');
+    catalogChannel.onmessage = () => {
+      loadCategories();
+      loadProducts(false);
+    };
+  } catch (_) {}
+
+  // 2. Cross-tab storage event
+  window.addEventListener('storage', handleStorageUpdate);
+
+  // 3. Tab visibility change & focus
+  window.addEventListener('focus', onWindowFocus);
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+
+  // 4. Smooth 4-second background poll for real-time live sync
+  pollTimer = setInterval(() => {
+    loadCategories();
+    loadProducts(false);
+  }, 4000);
+});
+
+onUnmounted(() => {
+  if (catalogChannel) {
+    catalogChannel.close();
+  }
+  if (pollTimer) {
+    clearInterval(pollTimer);
+  }
+  window.removeEventListener('storage', handleStorageUpdate);
+  window.removeEventListener('focus', onWindowFocus);
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
 </script>
 
@@ -65,14 +165,25 @@ onMounted(() => {
     <div class="hero-section">
       <div class="hero-content">
         <h1 class="hero-title">Fresh groceries delivered to your door</h1>
-        <p class="hero-subtitle">Shop from thousands of products • Get delivery in 30 minutes</p>
+        <p class="hero-subtitle">Shop from verified stock • 30 minute delivery in Addis Ababa</p>
       </div>
     </div>
 
     <!-- Categories -->
     <div class="categories-section">
-      <h2 class="section-title">Shop by category</h2>
+      <div class="cat-head-row">
+        <h2 class="section-title">Shop by category</h2>
+        <span class="db-pill">🟢 Live Catalog from Database</span>
+      </div>
       <div class="category-grid">
+        <button
+          class="category-card"
+          :class="{ active: selectedCategory === '' }"
+          @click="handleCategorySelect('')"
+        >
+          <div class="category-icon">🧺</div>
+          <span class="category-name">All Items</span>
+        </button>
         <button
           v-for="cat in categories"
           :key="cat.id"
@@ -89,32 +200,81 @@ onMounted(() => {
     <!-- Products -->
     <div class="products-section">
       <div class="section-header">
-        <h2 class="section-title">
-          {{ selectedCategory ? 'Products in ' + selectedCategory : 'All products' }}
-        </h2>
-        <span class="result-count">{{ products.length }} items</span>
+        <div>
+          <h2 class="section-title">
+            {{ activeCategoryName }}
+          </h2>
+          <div class="filter-tabs">
+            <button
+              class="tab-btn"
+              :class="{ active: filterMode === 'all' }"
+              @click="filterMode = 'all'"
+            >
+              All Items ({{ products.length }})
+            </button>
+            <button
+              class="tab-btn new-tab"
+              :class="{ active: filterMode === 'new_arrivals' }"
+              @click="filterMode = 'new_arrivals'"
+            >
+              🌟 New Arrivals ({{ newProductsCount }})
+            </button>
+          </div>
+        </div>
+
+        <div class="header-tools">
+          <button
+            class="btn-refresh"
+            @click="loadProducts"
+            :disabled="isRefreshing"
+            title="Fetch latest stock directly from database"
+          >
+            <span :class="{ spinning: isRefreshing }">🔄</span>
+            <span>{{ isRefreshing ? 'Updating...' : 'Refresh Catalog' }}</span>
+          </button>
+          <span class="result-count">{{ displayedProducts.length }} items</span>
+        </div>
       </div>
 
       <!-- Loading State -->
       <div v-if="loading" class="loading-container">
         <div class="spinner"></div>
-        <p class="loading-text">Loading products...</p>
+        <p class="loading-text">Fetching latest products from database...</p>
       </div>
 
-      <!-- Empty State -->
-      <div v-else-if="products.length === 0" class="empty-container">
+      <!-- Empty State: True Store Empty (No products added by manager yet) -->
+      <div v-else-if="products.length === 0 && !searchQuery && !selectedCategory" class="empty-container store-empty">
+        <div class="empty-icon">🛒</div>
+        <h3 class="empty-title">No products available yet</h3>
+        <p class="empty-text">
+          All default dummy products have been removed. Products will appear here immediately as soon as a store manager registers them.
+        </p>
+        <div class="empty-actions">
+          <button class="btn-refresh-primary" @click="loadProducts" :disabled="isRefreshing">
+            <span>🔄</span> Refresh Store Catalog
+          </button>
+          <router-link to="/admin123/inventory" class="btn-manager-cta">
+            <span>➕</span> Open Store Manager Portal to Add Products ↗
+          </router-link>
+        </div>
+      </div>
+
+      <!-- Empty State: Filter mismatch -->
+      <div v-else-if="displayedProducts.length === 0" class="empty-container">
         <div class="empty-icon">🔍</div>
         <h3 class="empty-title">No products found</h3>
-        <p class="empty-text">Try adjusting your search or filters</p>
-        <button class="btn-secondary" @click="selectedCategory = ''; searchQuery = '';">
-          Clear all filters
+        <p class="empty-text">
+          {{ selectedCategory ? `No products found in "${activeCategoryName}".` : 'No products matching your search.' }}
+        </p>
+        <button class="btn-secondary" @click="selectedCategory = ''; searchQuery = ''; filterMode = 'all'; loadProducts();">
+          Show All Store Products
         </button>
       </div>
 
       <!-- Product Grid -->
       <div v-else class="product-grid">
         <ProductCard
-          v-for="prod in products"
+          v-for="prod in displayedProducts"
           :key="prod.id"
           :product="prod"
         />
@@ -214,16 +374,110 @@ onMounted(() => {
   padding: 2rem 1.5rem;
 }
 
+.cat-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.db-pill {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #059669;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+}
+
 .section-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-end;
   margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.filter-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.tab-btn {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tab-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.tab-btn.active {
+  background: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+}
+
+.tab-btn.new-tab.active {
+  background: #059669;
+  border-color: #059669;
+  color: #ffffff;
+}
+
+.header-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.btn-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-refresh:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.btn-refresh:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.spinning {
+  display: inline-block;
+  animation: spin 0.8s linear infinite;
 }
 
 .result-count {
   font-size: 0.875rem;
   color: #6B7280;
+  font-weight: 500;
 }
 
 .product-grid {
@@ -286,6 +540,55 @@ onMounted(() => {
 .empty-text {
   color: #6B7280;
   margin-bottom: 1.5rem;
+  max-width: 480px;
+}
+
+.empty-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-refresh-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #007185;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-refresh-primary:hover {
+  background: #005a6a;
+  transform: translateY(-1px);
+}
+
+.btn-manager-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #111827;
+  color: #ffffff;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.btn-manager-cta:hover {
+  background: #1f2937;
+  color: #ffffff;
+  transform: translateY(-1px);
 }
 
 .btn-secondary {

@@ -62,13 +62,13 @@ class CatalogController extends Controller
         $search = $request->query('search');
 
         $query = Product::where('is_active', true)
-            ->with(['category', 'branchProducts' => function ($q) use ($branchId) {
-                $q->where('branch_id', $branchId);
-            }]);
+            ->with(['category', 'branchProducts']);
 
         if ($categorySlug) {
             $query->whereHas('category', function ($q) use ($categorySlug) {
-                $q->where('slug', $categorySlug);
+                $q->where('slug', $categorySlug)
+                  ->orWhere('id', $categorySlug)
+                  ->orWhere('name', $categorySlug);
             });
         }
 
@@ -79,8 +79,25 @@ class CatalogController extends Controller
             });
         }
 
-        $products = $query->get()->map(function ($product) {
-            $branchStock = $product->branchProducts->first();
+        $products = $query->orderByDesc('id')->get()->map(function ($product) use ($branchId) {
+            $branchStock = $product->branchProducts->firstWhere('branch_id', $branchId)
+                ?? $product->branchProducts->first();
+
+            $price = $branchStock ? floatval($branchStock->price) : 0.00;
+            $stock = $branchStock ? floatval($branchStock->stock_quantity) : 0.00;
+            $inStock = $branchStock ? (bool) $branchStock->is_in_stock : false;
+
+            $imageUrl = $product->image_url;
+            if ($imageUrl) {
+                if (str_starts_with($imageUrl, 'http://') || str_starts_with($imageUrl, 'https://') || str_starts_with($imageUrl, 'data:')) {
+                    // Full external or base64 data URL
+                } else {
+                    // Local stored image served directly via dedicated API streaming route
+                    $cleanName = basename($imageUrl);
+                    $imageUrl = url("/api/catalog/product-image/{$cleanName}");
+                }
+            }
+
             return [
                 'id' => $product->id,
                 'name' => $product->name,
@@ -89,20 +106,49 @@ class CatalogController extends Controller
                 'pricing_type' => $product->pricing_type, // 'fixed_unit' or 'weighted'
                 'unit_of_measure' => $product->unit_of_measure,
                 'step_weight_grams' => $product->step_weight_grams,
-                'image_url' => $product->image_url,
-                'is_perishable' => $product->is_perishable,
+                'image_url' => $imageUrl ?: null,
+                'is_perishable' => (bool) $product->is_perishable,
                 'category' => $product->category ? [
                     'id' => $product->category->id,
                     'name' => $product->category->name,
                     'slug' => $product->category->slug,
                 ] : null,
-                'price' => $branchStock ? $branchStock->price : 0.00,
-                'discount_price' => $branchStock ? $branchStock->discount_price : null,
-                'stock_quantity' => $branchStock ? $branchStock->stock_quantity : 0.00,
-                'is_in_stock' => $branchStock ? $branchStock->is_in_stock : false,
+                'price' => $price,
+                'discount_price' => ($branchStock && $branchStock->discount_price) ? floatval($branchStock->discount_price) : null,
+                'stock_quantity' => $stock,
+                'is_in_stock' => $inStock && $stock > 0,
+                'created_at' => $product->created_at ? $product->created_at->toISOString() : null,
+                'is_recent' => $product->created_at ? $product->created_at->diffInDays(now()) < 7 : false,
             ];
         });
 
         return response()->json($products);
+    }
+
+    /**
+     * Serve product image file reliably across all operating systems without symlink/junction issues.
+     */
+    public function getProductImage(string $filename): \Symfony\Component\HttpFoundation\Response
+    {
+        $cleanFilename = basename($filename);
+        $candidates = [
+            storage_path('app/public/products/' . $cleanFilename),
+            storage_path('app/private/public/products/' . $cleanFilename),
+            public_path('uploads/products/' . $cleanFilename),
+            storage_path('app/public/' . $cleanFilename),
+        ];
+
+        foreach ($candidates as $filePath) {
+            if (file_exists($filePath) && is_file($filePath)) {
+                $mimeType = mime_content_type($filePath) ?: 'image/jpeg';
+                return response()->file($filePath, [
+                    'Content-Type' => $mimeType,
+                    'Access-Control-Allow-Origin' => '*',
+                    'Cache-Control' => 'public, max-age=86400',
+                ]);
+            }
+        }
+
+        return response()->json(['message' => 'Image not found'], 404);
     }
 }
